@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"net/netip"
 
+	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
+	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
@@ -16,10 +18,11 @@ type Responder interface {
 }
 
 type responder struct {
-	nodeID                   protocol.ID
-	kTable                   ktable.Table
-	tokenSecret              []byte
-	sampleInfoHashesInterval int64
+	nodeID                         protocol.ID
+	kTable                         ktable.Table
+	tokenSecret                    []byte
+	sampleInfoHashesInterval       int64
+	peerTraceInfoHashWithPeersChan concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
 }
 
 var ErrMissingArguments = dht.Error{
@@ -76,6 +79,14 @@ func (r responder) Respond(_ context.Context, msg dht.RecvMsg) (ret dht.Return, 
 		ret.Nodes, ret.Nodes6 = nodeInfosFromNodes(result.ClosestNodes...)
 		token := r.announceToken(args.InfoHash, args.ID, msg.From.Addr())
 		ret.Token = &token
+		peers := make([]netip.AddrPort, 0, 1)
+		peers = append(peers, netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()))
+
+		r.peerTraceInfoHashWithPeersChan.In() <- peertrace.PeerTraceInfoHashWithPeers{
+			Source:   "get_peers",
+			InfoHash: args.InfoHash,
+			Peers:    peers,
+		}
 	case dht.QAnnouncePeer:
 		if args.InfoHash == [20]byte{} {
 			err = ErrMissingArguments
@@ -88,6 +99,15 @@ func (r responder) Respond(_ context.Context, msg dht.RecvMsg) (ret dht.Return, 
 		r.kTable.BatchCommand(ktable.PutHash{ID: args.InfoHash, Peers: []ktable.HashPeer{{
 			Addr: netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()),
 		}}})
+		peers := make([]netip.AddrPort, 1)
+		peers = append(peers, netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()))
+
+		r.peerTraceInfoHashWithPeersChan.In() <- peertrace.PeerTraceInfoHashWithPeers{
+			Source:   "Announcement",
+			InfoHash: args.InfoHash,
+			Peers:    peers,
+		}
+
 	case dht.QSampleInfohashes:
 		result := r.kTable.SampleHashesAndNodes()
 		samples := make(dht.CompactInfohashes, 0, len(result.Hashes))

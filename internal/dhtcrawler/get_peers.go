@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 	"net/netip"
 	"time"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 )
 
 func (c *crawler) runGetPeers(ctx context.Context) {
@@ -32,6 +34,16 @@ func (c *crawler) runGetPeers(ctx context.Context) {
 		case c.requestMetaInfo.In() <- infoHashWithPeers{
 			nodeHasPeersForHash: req,
 			peers:               peers,
+		}:
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case c.peerTraceInfoHashWithPeers.In() <- peertrace.PeerTraceInfoHashWithPeers{
+			Source:   "GetPeers",
+			InfoHash: req.infoHash,
+			Peers:    peers,
 		}:
 			return
 		}

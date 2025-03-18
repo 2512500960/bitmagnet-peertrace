@@ -2,10 +2,15 @@ package dhtcrawler
 
 import (
 	"context"
+	"net/netip"
+	"sync"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/bloom"
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
+	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
@@ -15,9 +20,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	boom "github.com/tylertreat/BoomFilters"
 	"go.uber.org/zap"
-	"net/netip"
-	"sync"
-	"time"
 )
 
 type crawler struct {
@@ -38,6 +40,7 @@ type crawler struct {
 	scrape                       concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
 	persistTorrents              concurrency.BatchingChannel[infoHashWithMetaInfo]
+	peerTraceInfoHashWithPeers   concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
 	persistSources               concurrency.BatchingChannel[infoHashWithScrape]
 	rescrapeThreshold            time.Duration
 	saveFilesThreshold           uint
@@ -75,6 +78,7 @@ func (c *crawler) start() {
 	go c.runPersistTorrents(ctx)
 	go c.runPersistSources(ctx)
 	go c.getOldNodes(ctx)
+	go c.runPeerTrace(ctx)
 	<-c.stopped
 }
 

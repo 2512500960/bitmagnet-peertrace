@@ -2,12 +2,15 @@ package dhtcrawler
 
 import (
 	"context"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/worker"
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/search"
+	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
@@ -17,21 +20,21 @@ import (
 	boom "github.com/tylertreat/BoomFilters"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Params struct {
 	fx.In
-	Config            Config
-	KTable            ktable.Table
-	Client            lazy.Lazy[client.Client]
-	MetainfoRequester metainforequester.Requester
-	BanningChecker    banning.Checker `name:"metainfo_banning_checker"`
-	Search            lazy.Lazy[search.Search]
-	Dao               lazy.Lazy[*dao.Query]
-	BlockingManager   lazy.Lazy[blocking.Manager]
-	DiscoveredNodes   concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
-	Logger            *zap.SugaredLogger
+	Config                         Config
+	KTable                         ktable.Table
+	Client                         lazy.Lazy[client.Client]
+	MetainfoRequester              metainforequester.Requester
+	BanningChecker                 banning.Checker `name:"metainfo_banning_checker"`
+	Search                         lazy.Lazy[search.Search]
+	Dao                            lazy.Lazy[*dao.Query]
+	BlockingManager                lazy.Lazy[blocking.Manager]
+	DiscoveredNodes                concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
+	Logger                         *zap.SugaredLogger
+	PeerTraceInfoHashWithPeersChan concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
 }
 
 type Result struct {
@@ -55,6 +58,7 @@ func New(params Params) Result {
 			"dht_crawler",
 			fx.Hook{
 				OnStart: func(context.Context) error {
+
 					active.Set(true)
 					scalingFactor := int(params.Config.ScalingFactor)
 					cl, err := params.Client.Get()
@@ -86,6 +90,7 @@ func New(params Params) Result {
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						scrape:                       concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
+						peerTraceInfoHashWithPeers:   params.PeerTraceInfoHashWithPeersChan,
 						persistTorrents: concurrency.NewBatchingChannel[infoHashWithMetaInfo](
 							1000,
 							1000,
