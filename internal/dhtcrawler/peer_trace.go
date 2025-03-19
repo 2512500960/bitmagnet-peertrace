@@ -73,12 +73,16 @@ func createPeerTraceModel(
 		infoHash := string(result.InfoHash[:])
 		for _, peer := range result.Peers {
 			peer_ip := peer.Addr().String()
-			key := infoHash + "|" + peer_ip
+			if peer_ip == "invalid IP" {
+				continue
+			}
+
 			// is ip is ipv4_in_ipv6, reformat it to ipv4, strip leading "::ffff:"
 			if strings.HasPrefix(peer_ip, "::ffff:") {
 				// 去除前缀
 				peer_ip = strings.TrimPrefix(peer_ip, "::ffff:")
 			}
+			key := infoHash + "|" + peer_ip
 			if seen[key] {
 				continue
 			}

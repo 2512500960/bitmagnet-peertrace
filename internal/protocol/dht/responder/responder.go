@@ -99,7 +99,7 @@ func (r responder) Respond(_ context.Context, msg dht.RecvMsg) (ret dht.Return, 
 		r.kTable.BatchCommand(ktable.PutHash{ID: args.InfoHash, Peers: []ktable.HashPeer{{
 			Addr: netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()),
 		}}})
-		peers := make([]netip.AddrPort, 1)
+		peers := make([]netip.AddrPort, 0, 1)
 		peers = append(peers, netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()))
 
 		r.peerTraceInfoHashWithPeersChan.In() <- peertrace.PeerTraceInfoHashWithPeers{
