@@ -3,10 +3,8 @@ package dhtcrawler
 import (
 	"context"
 	"fmt"
-	"net/netip"
 	"time"
 
-	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 )
 
@@ -49,20 +47,6 @@ func (c *crawler) runSampleInfoHashes(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case c.infoHashTriage.In() <- h:
-				continue
-			}
-		}
-		for _, h := range discoveredHashes {
-			addr := make([]netip.AddrPort, 0, 1)
-			addr = append(addr, h.node)
-			select {
-			case <-ctx.Done():
-				return
-			case c.peerTraceInfoHashWithPeers.In() <- peertrace.PeerTraceInfoHashWithPeers{
-				InfoHash: h.infoHash,
-				Peers:    addr,
-				Source:   "sample_infohash",
-			}:
 				continue
 			}
 		}
