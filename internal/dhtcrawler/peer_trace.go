@@ -77,7 +77,7 @@ func createPeerTraceModel(
 				continue
 			}
 
-			// is ip is ipv4_in_ipv6, reformat it to ipv4, strip leading "::ffff:"
+			// if peer_ip is ipv4_in_ipv6, reformat it to ipv4, strip leading "::ffff:"
 
 			peer_ip = strings.TrimPrefix(peer_ip, "::ffff:")
 			key := infoHash + "|" + peer_ip
@@ -86,7 +86,7 @@ func createPeerTraceModel(
 			}
 			seen[key] = true
 			records = append(records, &model.PeerTrace{
-				InfoHash: result.InfoHash[:],
+				InfoHash: result.InfoHash,
 				IP:       peer_ip,
 			})
 		}

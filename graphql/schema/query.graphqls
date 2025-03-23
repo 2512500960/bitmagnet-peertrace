@@ -5,6 +5,7 @@ type Query {
   queue: QueueQuery!
   torrent: TorrentQuery!
   torrentContent: TorrentContentQuery!
+  peerTrace: PeerTraceQuery!
 }
 
 type TorrentQuery {
@@ -66,4 +67,27 @@ type HealthCheck {
 type HealthQuery {
   status: HealthStatus!
   checks: [HealthCheck!]!
+}
+
+type PeerTraceTorrentsTrace {
+  torrent:Torrent!
+  lastSeenTime:DateTime!
+}
+
+type PeerTraceTorrentsTraceResult{
+  torrentTraces: [PeerTraceTorrentsTrace!]!
+}
+
+type PeerTraceQuery{
+  peerTrace: [PeerTrace!]!
+  filteredTraces(
+    input: PeerTraceFilterInput!
+  ): [PeerTrace!]!
+  torrentsByIP(ip:String!): PeerTraceTorrentsTraceResult!
+}
+
+input PeerTraceFilterInput {
+  ip: String
+  infoHash: Hash20
+  limit: Int = 200
 }

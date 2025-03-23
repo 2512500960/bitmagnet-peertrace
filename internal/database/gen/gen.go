@@ -1,12 +1,13 @@
 package gen
 
 import (
+	"path"
+	"runtime"
+
 	"github.com/iancoleman/strcase"
 	"gorm.io/gen"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
-	"path"
-	"runtime"
 )
 
 func BuildGenerator(db *gorm.DB) *gen.Generator {
@@ -39,7 +40,12 @@ func BuildGenerator(db *gorm.DB) *gen.Generator {
 	createdAtReadOnly := readAndCreateField("created_at")
 
 	g.WithJSONTagNameStrategy(strcase.ToLowerCamel)
-
+	peerTrace := g.GenerateModel(
+		"peer_trace",
+		readAndCreateField("ip"),
+		infoHashType,
+		readAndCreateField("last_seen_time"),
+	)
 	torrentSources := g.GenerateModel(
 		"torrent_sources",
 		readAndCreateField("key"),
@@ -449,6 +455,7 @@ func BuildGenerator(db *gorm.DB) *gen.Generator {
 		bloomFilters,
 		keyValues,
 		queueJobs,
+		peerTrace,
 	)
 
 	return g

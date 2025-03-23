@@ -67,6 +67,21 @@ type LanguageFacetInput struct {
 type Mutation struct {
 }
 
+type PeerTraceFilterInput struct {
+	IP       graphql.Omittable[*string]      `json:"ip,omitempty"`
+	InfoHash graphql.Omittable[*protocol.ID] `json:"infoHash,omitempty"`
+	Limit    graphql.Omittable[*int]         `json:"limit,omitempty"`
+}
+
+type PeerTraceTorrentsTrace struct {
+	Torrent      model.Torrent `json:"torrent"`
+	LastSeenTime time.Time     `json:"lastSeenTime"`
+}
+
+type PeerTraceTorrentsTraceResult struct {
+	TorrentTraces []PeerTraceTorrentsTrace `json:"torrentTraces"`
+}
+
 type Query struct {
 }
 

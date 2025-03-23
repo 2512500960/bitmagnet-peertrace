@@ -133,3 +133,9 @@ type ContentCollection {
   createdAt: DateTime!
   updatedAt: DateTime!
 }
+
+type PeerTrace {
+  ip: String!
+  infoHash: Hash20!
+  lastSeenTime: DateTime!
+}

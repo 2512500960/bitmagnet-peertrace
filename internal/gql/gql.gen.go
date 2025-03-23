@@ -49,6 +49,7 @@ type Config struct {
 type ResolverRoot interface {
 	Content() ContentResolver
 	Mutation() MutationResolver
+	PeerTraceQuery() PeerTraceQueryResolver
 	Query() QueryResolver
 	QueueJob() QueueJobResolver
 	QueueQuery() QueueQueryResolver
@@ -162,8 +163,30 @@ type ComplexityRoot struct {
 		Torrent func(childComplexity int) int
 	}
 
+	PeerTrace struct {
+		IP           func(childComplexity int) int
+		InfoHash     func(childComplexity int) int
+		LastSeenTime func(childComplexity int) int
+	}
+
+	PeerTraceQuery struct {
+		FilteredTraces func(childComplexity int, input gen.PeerTraceFilterInput) int
+		PeerTrace      func(childComplexity int) int
+		TorrentsByIP   func(childComplexity int, ip string) int
+	}
+
+	PeerTraceTorrentsTrace struct {
+		LastSeenTime func(childComplexity int) int
+		Torrent      func(childComplexity int) int
+	}
+
+	PeerTraceTorrentsTraceResult struct {
+		TorrentTraces func(childComplexity int) int
+	}
+
 	Query struct {
 		Health         func(childComplexity int) int
+		PeerTrace      func(childComplexity int) int
 		Queue          func(childComplexity int) int
 		Torrent        func(childComplexity int) int
 		TorrentContent func(childComplexity int) int
@@ -438,6 +461,11 @@ type MutationResolver interface {
 	Torrent(ctx context.Context) (gqlmodel.TorrentMutation, error)
 	Queue(ctx context.Context) (gqlmodel.QueueMutation, error)
 }
+type PeerTraceQueryResolver interface {
+	PeerTrace(ctx context.Context, obj *gqlmodel.PeerTraceQuery) ([]model.PeerTrace, error)
+	FilteredTraces(ctx context.Context, obj *gqlmodel.PeerTraceQuery, input gen.PeerTraceFilterInput) ([]model.PeerTrace, error)
+	TorrentsByIP(ctx context.Context, obj *gqlmodel.PeerTraceQuery, ip string) (gen.PeerTraceTorrentsTraceResult, error)
+}
 type QueryResolver interface {
 	Version(ctx context.Context) (string, error)
 	Workers(ctx context.Context) (gen.WorkersQuery, error)
@@ -445,6 +473,7 @@ type QueryResolver interface {
 	Queue(ctx context.Context) (gqlmodel.QueueQuery, error)
 	Torrent(ctx context.Context) (gqlmodel.TorrentQuery, error)
 	TorrentContent(ctx context.Context) (gqlmodel.TorrentContentQuery, error)
+	PeerTrace(ctx context.Context) (gqlmodel.PeerTraceQuery, error)
 }
 type QueueJobResolver interface {
 	RanAt(ctx context.Context, obj *model.QueueJob) (*time.Time, error)
@@ -916,12 +945,92 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.Torrent(childComplexity), true
 
+	case "PeerTrace.ip":
+		if e.complexity.PeerTrace.IP == nil {
+			break
+		}
+
+		return e.complexity.PeerTrace.IP(childComplexity), true
+
+	case "PeerTrace.infoHash":
+		if e.complexity.PeerTrace.InfoHash == nil {
+			break
+		}
+
+		return e.complexity.PeerTrace.InfoHash(childComplexity), true
+
+	case "PeerTrace.lastSeenTime":
+		if e.complexity.PeerTrace.LastSeenTime == nil {
+			break
+		}
+
+		return e.complexity.PeerTrace.LastSeenTime(childComplexity), true
+
+	case "PeerTraceQuery.filteredTraces":
+		if e.complexity.PeerTraceQuery.FilteredTraces == nil {
+			break
+		}
+
+		args, err := ec.field_PeerTraceQuery_filteredTraces_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.PeerTraceQuery.FilteredTraces(childComplexity, args["input"].(gen.PeerTraceFilterInput)), true
+
+	case "PeerTraceQuery.peerTrace":
+		if e.complexity.PeerTraceQuery.PeerTrace == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceQuery.PeerTrace(childComplexity), true
+
+	case "PeerTraceQuery.torrentsByIP":
+		if e.complexity.PeerTraceQuery.TorrentsByIP == nil {
+			break
+		}
+
+		args, err := ec.field_PeerTraceQuery_torrentsByIP_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.PeerTraceQuery.TorrentsByIP(childComplexity, args["ip"].(string)), true
+
+	case "PeerTraceTorrentsTrace.lastSeenTime":
+		if e.complexity.PeerTraceTorrentsTrace.LastSeenTime == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceTorrentsTrace.LastSeenTime(childComplexity), true
+
+	case "PeerTraceTorrentsTrace.torrent":
+		if e.complexity.PeerTraceTorrentsTrace.Torrent == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceTorrentsTrace.Torrent(childComplexity), true
+
+	case "PeerTraceTorrentsTraceResult.torrentTraces":
+		if e.complexity.PeerTraceTorrentsTraceResult.TorrentTraces == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceTorrentsTraceResult.TorrentTraces(childComplexity), true
+
 	case "Query.health":
 		if e.complexity.Query.Health == nil {
 			break
 		}
 
 		return e.complexity.Query.Health(childComplexity), true
+
+	case "Query.peerTrace":
+		if e.complexity.Query.PeerTrace == nil {
+			break
+		}
+
+		return e.complexity.Query.PeerTrace(childComplexity), true
 
 	case "Query.queue":
 		if e.complexity.Query.Queue == nil {
@@ -2112,6 +2221,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputContentTypeFacetInput,
 		ec.unmarshalInputGenreFacetInput,
 		ec.unmarshalInputLanguageFacetInput,
+		ec.unmarshalInputPeerTraceFilterInput,
 		ec.unmarshalInputQueueEnqueueReprocessTorrentsBatchInput,
 		ec.unmarshalInputQueueJobQueueFacetInput,
 		ec.unmarshalInputQueueJobStatusFacetInput,
@@ -2584,6 +2694,12 @@ type ContentCollection {
   createdAt: DateTime!
   updatedAt: DateTime!
 }
+
+type PeerTrace {
+  ip: String!
+  infoHash: Hash20!
+  lastSeenTime: DateTime!
+}
 `, BuiltIn: false},
 	{Name: "../../graphql/schema/mutation.graphqls", Input: `type Mutation {
   torrent: TorrentMutation!
@@ -2613,6 +2729,7 @@ input TorrentReprocessInput {
   queue: QueueQuery!
   torrent: TorrentQuery!
   torrentContent: TorrentContentQuery!
+  peerTrace: PeerTraceQuery!
 }
 
 type TorrentQuery {
@@ -2674,6 +2791,29 @@ type HealthCheck {
 type HealthQuery {
   status: HealthStatus!
   checks: [HealthCheck!]!
+}
+
+type PeerTraceTorrentsTrace {
+  torrent:Torrent!
+  lastSeenTime:DateTime!
+}
+
+type PeerTraceTorrentsTraceResult{
+  torrentTraces: [PeerTraceTorrentsTrace!]!
+}
+
+type PeerTraceQuery{
+  peerTrace: [PeerTrace!]!
+  filteredTraces(
+    input: PeerTraceFilterInput!
+  ): [PeerTrace!]!
+  torrentsByIP(ip:String!): PeerTraceTorrentsTraceResult!
+}
+
+input PeerTraceFilterInput {
+  ip: String
+  infoHash: Hash20
+  limit: Int = 200
 }
 `, BuiltIn: false},
 	{Name: "../../graphql/schema/queue.graphqls", Input: `type QueueQuery {
@@ -2986,6 +3126,62 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_PeerTraceQuery_filteredTraces_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_PeerTraceQuery_filteredTraces_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_PeerTraceQuery_filteredTraces_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gen.PeerTraceFilterInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gen.PeerTraceFilterInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNPeerTraceFilterInput2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceFilterInput(ctx, tmp)
+	}
+
+	var zeroVal gen.PeerTraceFilterInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_PeerTraceQuery_torrentsByIP_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_PeerTraceQuery_torrentsByIP_argsIP(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ip"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_PeerTraceQuery_torrentsByIP_argsIP(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["ip"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ip"))
+	if tmp, ok := rawArgs["ip"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -6316,6 +6512,488 @@ func (ec *executionContext) fieldContext_Mutation_queue(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _PeerTrace_ip(ctx context.Context, field graphql.CollectedField, obj *model.PeerTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTrace_ip(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IP, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTrace_ip(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTrace_infoHash(ctx context.Context, field graphql.CollectedField, obj *model.PeerTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTrace_infoHash(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InfoHash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(protocol.ID)
+	fc.Result = res
+	return ec.marshalNHash202githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTrace_infoHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Hash20 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTrace_lastSeenTime(ctx context.Context, field graphql.CollectedField, obj *model.PeerTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTrace_lastSeenTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastSeenTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTrace_lastSeenTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceQuery_peerTrace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PeerTraceQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceQuery_peerTrace(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PeerTraceQuery().PeerTrace(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.PeerTrace)
+	fc.Result = res
+	return ec.marshalNPeerTrace2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐPeerTraceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceQuery_peerTrace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ip":
+				return ec.fieldContext_PeerTrace_ip(ctx, field)
+			case "infoHash":
+				return ec.fieldContext_PeerTrace_infoHash(ctx, field)
+			case "lastSeenTime":
+				return ec.fieldContext_PeerTrace_lastSeenTime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTrace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceQuery_filteredTraces(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PeerTraceQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceQuery_filteredTraces(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PeerTraceQuery().FilteredTraces(rctx, obj, fc.Args["input"].(gen.PeerTraceFilterInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.PeerTrace)
+	fc.Result = res
+	return ec.marshalNPeerTrace2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐPeerTraceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceQuery_filteredTraces(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ip":
+				return ec.fieldContext_PeerTrace_ip(ctx, field)
+			case "infoHash":
+				return ec.fieldContext_PeerTrace_infoHash(ctx, field)
+			case "lastSeenTime":
+				return ec.fieldContext_PeerTrace_lastSeenTime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTrace", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_PeerTraceQuery_filteredTraces_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceQuery_torrentsByIP(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PeerTraceQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceQuery_torrentsByIP(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PeerTraceQuery().TorrentsByIP(rctx, obj, fc.Args["ip"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gen.PeerTraceTorrentsTraceResult)
+	fc.Result = res
+	return ec.marshalNPeerTraceTorrentsTraceResult2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTraceResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceQuery_torrentsByIP(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "torrentTraces":
+				return ec.fieldContext_PeerTraceTorrentsTraceResult_torrentTraces(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTraceTorrentsTraceResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_PeerTraceQuery_torrentsByIP_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceTorrentsTrace_torrent(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceTorrentsTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceTorrentsTrace_torrent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Torrent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Torrent)
+	fc.Result = res
+	return ec.marshalNTorrent2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐTorrent(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceTorrentsTrace_torrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceTorrentsTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "infoHash":
+				return ec.fieldContext_Torrent_infoHash(ctx, field)
+			case "name":
+				return ec.fieldContext_Torrent_name(ctx, field)
+			case "size":
+				return ec.fieldContext_Torrent_size(ctx, field)
+			case "hasFilesInfo":
+				return ec.fieldContext_Torrent_hasFilesInfo(ctx, field)
+			case "singleFile":
+				return ec.fieldContext_Torrent_singleFile(ctx, field)
+			case "extension":
+				return ec.fieldContext_Torrent_extension(ctx, field)
+			case "filesStatus":
+				return ec.fieldContext_Torrent_filesStatus(ctx, field)
+			case "filesCount":
+				return ec.fieldContext_Torrent_filesCount(ctx, field)
+			case "fileType":
+				return ec.fieldContext_Torrent_fileType(ctx, field)
+			case "fileTypes":
+				return ec.fieldContext_Torrent_fileTypes(ctx, field)
+			case "files":
+				return ec.fieldContext_Torrent_files(ctx, field)
+			case "sources":
+				return ec.fieldContext_Torrent_sources(ctx, field)
+			case "seeders":
+				return ec.fieldContext_Torrent_seeders(ctx, field)
+			case "leechers":
+				return ec.fieldContext_Torrent_leechers(ctx, field)
+			case "tagNames":
+				return ec.fieldContext_Torrent_tagNames(ctx, field)
+			case "magnetUri":
+				return ec.fieldContext_Torrent_magnetUri(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Torrent_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Torrent_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Torrent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceTorrentsTrace_lastSeenTime(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceTorrentsTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceTorrentsTrace_lastSeenTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastSeenTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceTorrentsTrace_lastSeenTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceTorrentsTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceTorrentsTraceResult_torrentTraces(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceTorrentsTraceResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceTorrentsTraceResult_torrentTraces(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TorrentTraces, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]gen.PeerTraceTorrentsTrace)
+	fc.Result = res
+	return ec.marshalNPeerTraceTorrentsTrace2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTraceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceTorrentsTraceResult_torrentTraces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceTorrentsTraceResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "torrent":
+				return ec.fieldContext_PeerTraceTorrentsTrace_torrent(ctx, field)
+			case "lastSeenTime":
+				return ec.fieldContext_PeerTraceTorrentsTrace_lastSeenTime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTraceTorrentsTrace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_version(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_version(ctx, field)
 	if err != nil {
@@ -6605,6 +7283,58 @@ func (ec *executionContext) fieldContext_Query_torrentContent(_ context.Context,
 				return ec.fieldContext_TorrentContentQuery_search(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TorrentContentQuery", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_peerTrace(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_peerTrace(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PeerTrace(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.PeerTraceQuery)
+	fc.Result = res
+	return ec.marshalNPeerTraceQuery2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚐPeerTraceQuery(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_peerTrace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "peerTrace":
+				return ec.fieldContext_PeerTraceQuery_peerTrace(ctx, field)
+			case "filteredTraces":
+				return ec.fieldContext_PeerTraceQuery_filteredTraces(ctx, field)
+			case "torrentsByIP":
+				return ec.fieldContext_PeerTraceQuery_torrentsByIP(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTraceQuery", field.Name)
 		},
 	}
 	return fc, nil
@@ -15984,6 +16714,51 @@ func (ec *executionContext) unmarshalInputLanguageFacetInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPeerTraceFilterInput(ctx context.Context, obj any) (gen.PeerTraceFilterInput, error) {
+	var it gen.PeerTraceFilterInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 200
+	}
+
+	fieldsInOrder := [...]string{"ip", "infoHash", "limit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "ip":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ip"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IP = graphql.OmittableOf(data)
+		case "infoHash":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("infoHash"))
+			data, err := ec.unmarshalOHash202ᚖgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InfoHash = graphql.OmittableOf(data)
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = graphql.OmittableOf(data)
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputQueueEnqueueReprocessTorrentsBatchInput(ctx context.Context, obj any) (manager.EnqueueReprocessTorrentsBatchRequest, error) {
 	var it manager.EnqueueReprocessTorrentsBatchRequest
 	asMap := map[string]any{}
@@ -17825,6 +18600,280 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var peerTraceImplementors = []string{"PeerTrace"}
+
+func (ec *executionContext) _PeerTrace(ctx context.Context, sel ast.SelectionSet, obj *model.PeerTrace) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerTraceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerTrace")
+		case "ip":
+			out.Values[i] = ec._PeerTrace_ip(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "infoHash":
+			out.Values[i] = ec._PeerTrace_infoHash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSeenTime":
+			out.Values[i] = ec._PeerTrace_lastSeenTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peerTraceQueryImplementors = []string{"PeerTraceQuery"}
+
+func (ec *executionContext) _PeerTraceQuery(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.PeerTraceQuery) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerTraceQueryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerTraceQuery")
+		case "peerTrace":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PeerTraceQuery_peerTrace(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "filteredTraces":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PeerTraceQuery_filteredTraces(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "torrentsByIP":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PeerTraceQuery_torrentsByIP(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peerTraceTorrentsTraceImplementors = []string{"PeerTraceTorrentsTrace"}
+
+func (ec *executionContext) _PeerTraceTorrentsTrace(ctx context.Context, sel ast.SelectionSet, obj *gen.PeerTraceTorrentsTrace) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerTraceTorrentsTraceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerTraceTorrentsTrace")
+		case "torrent":
+			out.Values[i] = ec._PeerTraceTorrentsTrace_torrent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSeenTime":
+			out.Values[i] = ec._PeerTraceTorrentsTrace_lastSeenTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peerTraceTorrentsTraceResultImplementors = []string{"PeerTraceTorrentsTraceResult"}
+
+func (ec *executionContext) _PeerTraceTorrentsTraceResult(ctx context.Context, sel ast.SelectionSet, obj *gen.PeerTraceTorrentsTraceResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerTraceTorrentsTraceResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerTraceTorrentsTraceResult")
+		case "torrentTraces":
+			out.Values[i] = ec._PeerTraceTorrentsTraceResult_torrentTraces(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -17964,6 +19013,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_torrentContent(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "peerTrace":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_peerTrace(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -21047,6 +22118,115 @@ func (ec *executionContext) marshalNMetricsBucketDuration2githubᚗcomᚋbitmagn
 	return v
 }
 
+func (ec *executionContext) marshalNPeerTrace2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐPeerTrace(ctx context.Context, sel ast.SelectionSet, v model.PeerTrace) graphql.Marshaler {
+	return ec._PeerTrace(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPeerTrace2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐPeerTraceᚄ(ctx context.Context, sel ast.SelectionSet, v []model.PeerTrace) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPeerTrace2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐPeerTrace(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNPeerTraceFilterInput2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceFilterInput(ctx context.Context, v any) (gen.PeerTraceFilterInput, error) {
+	res, err := ec.unmarshalInputPeerTraceFilterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPeerTraceQuery2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚐPeerTraceQuery(ctx context.Context, sel ast.SelectionSet, v gqlmodel.PeerTraceQuery) graphql.Marshaler {
+	return ec._PeerTraceQuery(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPeerTraceTorrentsTrace2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTrace(ctx context.Context, sel ast.SelectionSet, v gen.PeerTraceTorrentsTrace) graphql.Marshaler {
+	return ec._PeerTraceTorrentsTrace(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPeerTraceTorrentsTrace2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTraceᚄ(ctx context.Context, sel ast.SelectionSet, v []gen.PeerTraceTorrentsTrace) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPeerTraceTorrentsTrace2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTrace(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPeerTraceTorrentsTraceResult2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTraceResult(ctx context.Context, sel ast.SelectionSet, v gen.PeerTraceTorrentsTraceResult) graphql.Marshaler {
+	return ec._PeerTraceTorrentsTraceResult(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNQueueJob2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐQueueJob(ctx context.Context, sel ast.SelectionSet, v model.QueueJob) graphql.Marshaler {
 	return ec._QueueJob(ctx, sel, &v)
 }
@@ -22548,6 +23728,22 @@ func (ec *executionContext) marshalOHash202ᚕgithubᚗcomᚋbitmagnetᚑioᚋbi
 	return ret
 }
 
+func (ec *executionContext) unmarshalOHash202ᚖgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx context.Context, v any) (*protocol.ID, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(protocol.ID)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHash202ᚖgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx context.Context, sel ast.SelectionSet, v *protocol.ID) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOInt2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐNullUint(ctx context.Context, v any) (model.NullUint, error) {
 	var res model.NullUint
 	err := res.UnmarshalGQL(v)
@@ -22614,6 +23810,22 @@ func (ec *executionContext) marshalOInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalInt(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOLanguage2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐLanguageᚄ(ctx context.Context, v any) ([]model.Language, error) {

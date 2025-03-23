@@ -12,6 +12,7 @@ type Search interface {
 	TorrentSearch
 	TorrentContentSearch
 	TorrentFilesSearch
+	PeerTraceSearch
 }
 
 type search struct {

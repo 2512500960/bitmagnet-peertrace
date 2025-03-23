@@ -17,6 +17,24 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/version"
 )
 
+// PeerTrace is the resolver for the peerTrace field.
+func (r *peerTraceQueryResolver) PeerTrace(ctx context.Context, obj *gqlmodel.PeerTraceQuery) ([]model.PeerTrace, error) {
+	result, err := obj.PeerTraceSearch.PeerTrace(ctx, query.Limit(100))
+	return result.Items, err
+}
+
+// FilteredTraces is the resolver for the filteredTraces field.
+func (r *peerTraceQueryResolver) FilteredTraces(ctx context.Context, obj *gqlmodel.PeerTraceQuery, input gen.PeerTraceFilterInput) ([]model.PeerTrace, error) {
+	result, err := obj.PeerTraceSearch.PeerTraceFiltered(ctx, input)
+	return result.Items, err
+}
+
+// TorrentsByIP is the resolver for the torrentsByIP field.
+func (r *peerTraceQueryResolver) TorrentsByIP(ctx context.Context, obj *gqlmodel.PeerTraceQuery, ip string) (gen.PeerTraceTorrentsTraceResult, error) {
+	result, err := obj.PeerTraceSearch.PeerTraceTorrents(ctx, ip)
+	return result, err
+}
+
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context) (string, error) {
 	return version.GitTag, nil
@@ -98,6 +116,13 @@ func (r *queryResolver) TorrentContent(ctx context.Context) (gqlmodel.TorrentCon
 	}, nil
 }
 
+// PeerTrace is the resolver for the peerTrace field.
+func (r *queryResolver) PeerTrace(ctx context.Context) (gqlmodel.PeerTraceQuery, error) {
+	return gqlmodel.PeerTraceQuery{
+		PeerTraceSearch: r.Search,
+	}, nil
+}
+
 // Files is the resolver for the files field.
 func (r *torrentQueryResolver) Files(ctx context.Context, obj *gqlmodel.TorrentQuery, input gqlmodel.TorrentFilesQueryInput) (query.GenericResult[model.TorrentFile], error) {
 	return gqlmodel.TorrentQuery{
@@ -105,11 +130,15 @@ func (r *torrentQueryResolver) Files(ctx context.Context, obj *gqlmodel.TorrentQ
 	}.Files(ctx, input)
 }
 
+// PeerTraceQuery returns gql.PeerTraceQueryResolver implementation.
+func (r *Resolver) PeerTraceQuery() gql.PeerTraceQueryResolver { return &peerTraceQueryResolver{r} }
+
 // Query returns gql.QueryResolver implementation.
 func (r *Resolver) Query() gql.QueryResolver { return &queryResolver{r} }
 
 // TorrentQuery returns gql.TorrentQueryResolver implementation.
 func (r *Resolver) TorrentQuery() gql.TorrentQueryResolver { return &torrentQueryResolver{r} }
 
+type peerTraceQueryResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type torrentQueryResolver struct{ *Resolver }

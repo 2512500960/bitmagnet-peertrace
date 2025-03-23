@@ -5,332 +5,384 @@
 package dao
 
 import (
-        "context"
+	"context"
 
-        "gorm.io/gorm"
-        "gorm.io/gorm/clause"
-        "gorm.io/gorm/schema"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/schema"
 
-        "gorm.io/gen"
-        "gorm.io/gen/field"
+	"gorm.io/gen"
+	"gorm.io/gen/field"
 
-        "gorm.io/plugin/dbresolver"
-		"github.com/bitmagnet-io/bitmagnet/internal/model"
+	"gorm.io/plugin/dbresolver"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/model"
 )
 
 func newPeerTrace(db *gorm.DB, opts ...gen.DOOption) peerTrace {
-        _peerTrace := peerTrace{}
+	_peerTrace := peerTrace{}
 
-        _peerTrace.peerTraceDo.UseDB(db, opts...)
-        _peerTrace.peerTraceDo.UseModel(&model.PeerTrace{})
+	_peerTrace.peerTraceDo.UseDB(db, opts...)
+	_peerTrace.peerTraceDo.UseModel(&model.PeerTrace{})
 
-        tableName := _peerTrace.peerTraceDo.TableName()
-        _peerTrace.ALL = field.NewAsterisk(tableName)
-        _peerTrace.IP = field.NewString(tableName, "ip")
-        _peerTrace.InfoHash = field.NewField(tableName, "info_hash")
-        _peerTrace.LastSeenTime = field.NewTime(tableName, "last_seen_time")
+	tableName := _peerTrace.peerTraceDo.TableName()
+	_peerTrace.ALL = field.NewAsterisk(tableName)
+	_peerTrace.IP = field.NewString(tableName, "ip")
+	_peerTrace.InfoHash = field.NewField(tableName, "info_hash")
+	_peerTrace.LastSeenTime = field.NewTime(tableName, "last_seen_time")
 
-        _peerTrace.fillFieldMap()
+	_peerTrace.fillFieldMap()
 
-        return _peerTrace
+	return _peerTrace
 }
 
 type peerTrace struct {
-        peerTraceDo peerTraceDo
+	peerTraceDo
 
-        ALL          field.Asterisk
-        IP           field.String
-        InfoHash     field.Field
-        LastSeenTime field.Time
+	ALL          field.Asterisk
+	IP           field.String
+	InfoHash     field.Field
+	LastSeenTime field.Time
 
-        fieldMap map[string]field.Expr
+	fieldMap map[string]field.Expr
 }
 
 func (p peerTrace) Table(newTableName string) *peerTrace {
-        p.peerTraceDo.UseTable(newTableName)
-        return p.updateTableName(newTableName)
+	p.peerTraceDo.UseTable(newTableName)
+	return p.updateTableName(newTableName)
 }
 
 func (p peerTrace) As(alias string) *peerTrace {
-        p.peerTraceDo.DO = *(p.peerTraceDo.As(alias).(*gen.DO))
-        return p.updateTableName(alias)
+	p.peerTraceDo.DO = *(p.peerTraceDo.As(alias).(*gen.DO))
+	return p.updateTableName(alias)
 }
 
 func (p *peerTrace) updateTableName(table string) *peerTrace {
-        p.ALL = field.NewAsterisk(table)
-        p.IP = field.NewString(table, "ip")
-        p.InfoHash = field.NewField(table, "info_hash")
-        p.LastSeenTime = field.NewTime(table, "last_seen_time")
+	p.ALL = field.NewAsterisk(table)
+	p.IP = field.NewString(table, "ip")
+	p.InfoHash = field.NewField(table, "info_hash")
+	p.LastSeenTime = field.NewTime(table, "last_seen_time")
 
-        p.fillFieldMap()
+	p.fillFieldMap()
 
-        return p
+	return p
 }
-
-func (p *peerTrace) WithContext(ctx context.Context) *peerTraceDo {
-        return p.peerTraceDo.WithContext(ctx)
-}
-
-func (p peerTrace) TableName() string { return p.peerTraceDo.TableName() }
-
-func (p peerTrace) Alias() string { return p.peerTraceDo.Alias() }
-
-func (p peerTrace) Columns(cols ...field.Expr) gen.Columns { return p.peerTraceDo.Columns(cols...) }
 
 func (p *peerTrace) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
-        _f, ok := p.fieldMap[fieldName]
-        if !ok || _f == nil {
-                return nil, false
-        }
-        _oe, ok := _f.(field.OrderExpr)
-        return _oe, ok
+	_f, ok := p.fieldMap[fieldName]
+	if !ok || _f == nil {
+		return nil, false
+	}
+	_oe, ok := _f.(field.OrderExpr)
+	return _oe, ok
 }
 
 func (p *peerTrace) fillFieldMap() {
-        p.fieldMap = make(map[string]field.Expr, 3)
-        p.fieldMap["ip"] = p.IP
-        p.fieldMap["info_hash"] = p.InfoHash
-        p.fieldMap["last_seen_time"] = p.LastSeenTime
+	p.fieldMap = make(map[string]field.Expr, 3)
+	p.fieldMap["ip"] = p.IP
+	p.fieldMap["info_hash"] = p.InfoHash
+	p.fieldMap["last_seen_time"] = p.LastSeenTime
 }
 
 func (p peerTrace) clone(db *gorm.DB) peerTrace {
-        p.peerTraceDo.ReplaceConnPool(db.Statement.ConnPool)
-        return p
+	p.peerTraceDo.ReplaceConnPool(db.Statement.ConnPool)
+	return p
 }
 
 func (p peerTrace) replaceDB(db *gorm.DB) peerTrace {
-        p.peerTraceDo.ReplaceDB(db)
-        return p
+	p.peerTraceDo.ReplaceDB(db)
+	return p
 }
 
 type peerTraceDo struct{ gen.DO }
 
-func (p peerTraceDo) Debug() *peerTraceDo {
-        return p.withDO(p.DO.Debug())
+type IPeerTraceDo interface {
+	gen.SubQuery
+	Debug() IPeerTraceDo
+	WithContext(ctx context.Context) IPeerTraceDo
+	WithResult(fc func(tx gen.Dao)) gen.ResultInfo
+	ReplaceDB(db *gorm.DB)
+	ReadDB() IPeerTraceDo
+	WriteDB() IPeerTraceDo
+	As(alias string) gen.Dao
+	Session(config *gorm.Session) IPeerTraceDo
+	Columns(cols ...field.Expr) gen.Columns
+	Clauses(conds ...clause.Expression) IPeerTraceDo
+	Not(conds ...gen.Condition) IPeerTraceDo
+	Or(conds ...gen.Condition) IPeerTraceDo
+	Select(conds ...field.Expr) IPeerTraceDo
+	Where(conds ...gen.Condition) IPeerTraceDo
+	Order(conds ...field.Expr) IPeerTraceDo
+	Distinct(cols ...field.Expr) IPeerTraceDo
+	Omit(cols ...field.Expr) IPeerTraceDo
+	Join(table schema.Tabler, on ...field.Expr) IPeerTraceDo
+	LeftJoin(table schema.Tabler, on ...field.Expr) IPeerTraceDo
+	RightJoin(table schema.Tabler, on ...field.Expr) IPeerTraceDo
+	Group(cols ...field.Expr) IPeerTraceDo
+	Having(conds ...gen.Condition) IPeerTraceDo
+	Limit(limit int) IPeerTraceDo
+	Offset(offset int) IPeerTraceDo
+	Count() (count int64, err error)
+	Scopes(funcs ...func(gen.Dao) gen.Dao) IPeerTraceDo
+	Unscoped() IPeerTraceDo
+	Create(values ...*model.PeerTrace) error
+	CreateInBatches(values []*model.PeerTrace, batchSize int) error
+	Save(values ...*model.PeerTrace) error
+	First() (*model.PeerTrace, error)
+	Take() (*model.PeerTrace, error)
+	Last() (*model.PeerTrace, error)
+	Find() ([]*model.PeerTrace, error)
+	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.PeerTrace, err error)
+	FindInBatches(result *[]*model.PeerTrace, batchSize int, fc func(tx gen.Dao, batch int) error) error
+	Pluck(column field.Expr, dest interface{}) error
+	Delete(...*model.PeerTrace) (info gen.ResultInfo, err error)
+	Update(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
+	UpdateSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
+	Updates(value interface{}) (info gen.ResultInfo, err error)
+	UpdateColumn(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
+	UpdateColumnSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
+	UpdateColumns(value interface{}) (info gen.ResultInfo, err error)
+	UpdateFrom(q gen.SubQuery) gen.Dao
+	Attrs(attrs ...field.AssignExpr) IPeerTraceDo
+	Assign(attrs ...field.AssignExpr) IPeerTraceDo
+	Joins(fields ...field.RelationField) IPeerTraceDo
+	Preload(fields ...field.RelationField) IPeerTraceDo
+	FirstOrInit() (*model.PeerTrace, error)
+	FirstOrCreate() (*model.PeerTrace, error)
+	FindByPage(offset int, limit int) (result []*model.PeerTrace, count int64, err error)
+	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Scan(result interface{}) (err error)
+	Returning(value interface{}, columns ...string) IPeerTraceDo
+	UnderlyingDB() *gorm.DB
+	schema.Tabler
 }
 
-func (p peerTraceDo) WithContext(ctx context.Context) *peerTraceDo {
-        return p.withDO(p.DO.WithContext(ctx))
+func (p peerTraceDo) Debug() IPeerTraceDo {
+	return p.withDO(p.DO.Debug())
 }
 
-func (p peerTraceDo) ReadDB() *peerTraceDo {
-        return p.Clauses(dbresolver.Read)
+func (p peerTraceDo) WithContext(ctx context.Context) IPeerTraceDo {
+	return p.withDO(p.DO.WithContext(ctx))
 }
 
-func (p peerTraceDo) WriteDB() *peerTraceDo {
-        return p.Clauses(dbresolver.Write)
+func (p peerTraceDo) ReadDB() IPeerTraceDo {
+	return p.Clauses(dbresolver.Read)
 }
 
-func (p peerTraceDo) Session(config *gorm.Session) *peerTraceDo {
-        return p.withDO(p.DO.Session(config))
+func (p peerTraceDo) WriteDB() IPeerTraceDo {
+	return p.Clauses(dbresolver.Write)
 }
 
-func (p peerTraceDo) Clauses(conds ...clause.Expression) *peerTraceDo {
-        return p.withDO(p.DO.Clauses(conds...))
+func (p peerTraceDo) Session(config *gorm.Session) IPeerTraceDo {
+	return p.withDO(p.DO.Session(config))
 }
 
-func (p peerTraceDo) Returning(value interface{}, columns ...string) *peerTraceDo {
-        return p.withDO(p.DO.Returning(value, columns...))
+func (p peerTraceDo) Clauses(conds ...clause.Expression) IPeerTraceDo {
+	return p.withDO(p.DO.Clauses(conds...))
 }
 
-func (p peerTraceDo) Not(conds ...gen.Condition) *peerTraceDo {
-        return p.withDO(p.DO.Not(conds...))
+func (p peerTraceDo) Returning(value interface{}, columns ...string) IPeerTraceDo {
+	return p.withDO(p.DO.Returning(value, columns...))
 }
 
-func (p peerTraceDo) Or(conds ...gen.Condition) *peerTraceDo {
-        return p.withDO(p.DO.Or(conds...))
+func (p peerTraceDo) Not(conds ...gen.Condition) IPeerTraceDo {
+	return p.withDO(p.DO.Not(conds...))
 }
 
-func (p peerTraceDo) Select(conds ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Select(conds...))
+func (p peerTraceDo) Or(conds ...gen.Condition) IPeerTraceDo {
+	return p.withDO(p.DO.Or(conds...))
 }
 
-func (p peerTraceDo) Where(conds ...gen.Condition) *peerTraceDo {
-        return p.withDO(p.DO.Where(conds...))
+func (p peerTraceDo) Select(conds ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Select(conds...))
 }
 
-func (p peerTraceDo) Order(conds ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Order(conds...))
+func (p peerTraceDo) Where(conds ...gen.Condition) IPeerTraceDo {
+	return p.withDO(p.DO.Where(conds...))
 }
 
-func (p peerTraceDo) Distinct(cols ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Distinct(cols...))
+func (p peerTraceDo) Order(conds ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Order(conds...))
 }
 
-func (p peerTraceDo) Omit(cols ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Omit(cols...))
+func (p peerTraceDo) Distinct(cols ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Distinct(cols...))
 }
 
-func (p peerTraceDo) Join(table schema.Tabler, on ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Join(table, on...))
+func (p peerTraceDo) Omit(cols ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Omit(cols...))
 }
 
-func (p peerTraceDo) LeftJoin(table schema.Tabler, on ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.LeftJoin(table, on...))
+func (p peerTraceDo) Join(table schema.Tabler, on ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Join(table, on...))
 }
 
-func (p peerTraceDo) RightJoin(table schema.Tabler, on ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.RightJoin(table, on...))
+func (p peerTraceDo) LeftJoin(table schema.Tabler, on ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.LeftJoin(table, on...))
 }
 
-func (p peerTraceDo) Group(cols ...field.Expr) *peerTraceDo {
-        return p.withDO(p.DO.Group(cols...))
+func (p peerTraceDo) RightJoin(table schema.Tabler, on ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.RightJoin(table, on...))
 }
 
-func (p peerTraceDo) Having(conds ...gen.Condition) *peerTraceDo {
-        return p.withDO(p.DO.Having(conds...))
+func (p peerTraceDo) Group(cols ...field.Expr) IPeerTraceDo {
+	return p.withDO(p.DO.Group(cols...))
 }
 
-func (p peerTraceDo) Limit(limit int) *peerTraceDo {
-        return p.withDO(p.DO.Limit(limit))
+func (p peerTraceDo) Having(conds ...gen.Condition) IPeerTraceDo {
+	return p.withDO(p.DO.Having(conds...))
 }
 
-func (p peerTraceDo) Offset(offset int) *peerTraceDo {
-        return p.withDO(p.DO.Offset(offset))
+func (p peerTraceDo) Limit(limit int) IPeerTraceDo {
+	return p.withDO(p.DO.Limit(limit))
 }
 
-func (p peerTraceDo) Scopes(funcs ...func(gen.Dao) gen.Dao) *peerTraceDo {
-        return p.withDO(p.DO.Scopes(funcs...))
+func (p peerTraceDo) Offset(offset int) IPeerTraceDo {
+	return p.withDO(p.DO.Offset(offset))
 }
 
-func (p peerTraceDo) Unscoped() *peerTraceDo {
-        return p.withDO(p.DO.Unscoped())
+func (p peerTraceDo) Scopes(funcs ...func(gen.Dao) gen.Dao) IPeerTraceDo {
+	return p.withDO(p.DO.Scopes(funcs...))
+}
+
+func (p peerTraceDo) Unscoped() IPeerTraceDo {
+	return p.withDO(p.DO.Unscoped())
 }
 
 func (p peerTraceDo) Create(values ...*model.PeerTrace) error {
-        if len(values) == 0 {
-                return nil
-        }
-        return p.DO.Create(values)
+	if len(values) == 0 {
+		return nil
+	}
+	return p.DO.Create(values)
 }
 
 func (p peerTraceDo) CreateInBatches(values []*model.PeerTrace, batchSize int) error {
-        return p.DO.CreateInBatches(values, batchSize)
+	return p.DO.CreateInBatches(values, batchSize)
 }
 
 // Save : !!! underlying implementation is different with GORM
 // The method is equivalent to executing the statement: db.Clauses(clause.OnConflict{UpdateAll: true}).Create(values)
 func (p peerTraceDo) Save(values ...*model.PeerTrace) error {
-        if len(values) == 0 {
-                return nil
-        }
-        return p.DO.Save(values)
+	if len(values) == 0 {
+		return nil
+	}
+	return p.DO.Save(values)
 }
 
 func (p peerTraceDo) First() (*model.PeerTrace, error) {
-        if result, err := p.DO.First(); err != nil {
-                return nil, err
-        } else {
-                return result.(*model.PeerTrace), nil
-        }
+	if result, err := p.DO.First(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PeerTrace), nil
+	}
 }
 
 func (p peerTraceDo) Take() (*model.PeerTrace, error) {
-        if result, err := p.DO.Take(); err != nil {
-                return nil, err
-        } else {
-                return result.(*model.PeerTrace), nil
-        }
+	if result, err := p.DO.Take(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PeerTrace), nil
+	}
 }
 
 func (p peerTraceDo) Last() (*model.PeerTrace, error) {
-        if result, err := p.DO.Last(); err != nil {
-                return nil, err
-        } else {
-                return result.(*model.PeerTrace), nil
-        }
+	if result, err := p.DO.Last(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PeerTrace), nil
+	}
 }
 
 func (p peerTraceDo) Find() ([]*model.PeerTrace, error) {
-        result, err := p.DO.Find()
-        return result.([]*model.PeerTrace), err
+	result, err := p.DO.Find()
+	return result.([]*model.PeerTrace), err
 }
 
 func (p peerTraceDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.PeerTrace, err error) {
-        buf := make([]*model.PeerTrace, 0, batchSize)
-        err = p.DO.FindInBatches(&buf, batchSize, func(tx gen.Dao, batch int) error {
-                defer func() { results = append(results, buf...) }()
-                return fc(tx, batch)
-        })
-        return results, err
+	buf := make([]*model.PeerTrace, 0, batchSize)
+	err = p.DO.FindInBatches(&buf, batchSize, func(tx gen.Dao, batch int) error {
+		defer func() { results = append(results, buf...) }()
+		return fc(tx, batch)
+	})
+	return results, err
 }
 
 func (p peerTraceDo) FindInBatches(result *[]*model.PeerTrace, batchSize int, fc func(tx gen.Dao, batch int) error) error {
-        return p.DO.FindInBatches(result, batchSize, fc)
+	return p.DO.FindInBatches(result, batchSize, fc)
 }
 
-func (p peerTraceDo) Attrs(attrs ...field.AssignExpr) *peerTraceDo {
-        return p.withDO(p.DO.Attrs(attrs...))
+func (p peerTraceDo) Attrs(attrs ...field.AssignExpr) IPeerTraceDo {
+	return p.withDO(p.DO.Attrs(attrs...))
 }
 
-func (p peerTraceDo) Assign(attrs ...field.AssignExpr) *peerTraceDo {
-        return p.withDO(p.DO.Assign(attrs...))
+func (p peerTraceDo) Assign(attrs ...field.AssignExpr) IPeerTraceDo {
+	return p.withDO(p.DO.Assign(attrs...))
 }
 
-func (p peerTraceDo) Joins(fields ...field.RelationField) *peerTraceDo {
-        for _, _f := range fields {
-                p = *p.withDO(p.DO.Joins(_f))
-        }
-        return &p
+func (p peerTraceDo) Joins(fields ...field.RelationField) IPeerTraceDo {
+	for _, _f := range fields {
+		p = *p.withDO(p.DO.Joins(_f))
+	}
+	return &p
 }
 
-func (p peerTraceDo) Preload(fields ...field.RelationField) *peerTraceDo {
-        for _, _f := range fields {
-                p = *p.withDO(p.DO.Preload(_f))
-        }
-        return &p
+func (p peerTraceDo) Preload(fields ...field.RelationField) IPeerTraceDo {
+	for _, _f := range fields {
+		p = *p.withDO(p.DO.Preload(_f))
+	}
+	return &p
 }
 
 func (p peerTraceDo) FirstOrInit() (*model.PeerTrace, error) {
-        if result, err := p.DO.FirstOrInit(); err != nil {
-                return nil, err
-        } else {
-                return result.(*model.PeerTrace), nil
-        }
+	if result, err := p.DO.FirstOrInit(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PeerTrace), nil
+	}
 }
 
 func (p peerTraceDo) FirstOrCreate() (*model.PeerTrace, error) {
-        if result, err := p.DO.FirstOrCreate(); err != nil {
-                return nil, err
-        } else {
-                return result.(*model.PeerTrace), nil
-        }
+	if result, err := p.DO.FirstOrCreate(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PeerTrace), nil
+	}
 }
 
 func (p peerTraceDo) FindByPage(offset int, limit int) (result []*model.PeerTrace, count int64, err error) {
-        result, err = p.Offset(offset).Limit(limit).Find()
-        if err != nil {
-                return
-        }
+	result, err = p.Offset(offset).Limit(limit).Find()
+	if err != nil {
+		return
+	}
 
-        if size := len(result); 0 < limit && 0 < size && size < limit {
-                count = int64(size + offset)
-                return
-        }
+	if size := len(result); 0 < limit && 0 < size && size < limit {
+		count = int64(size + offset)
+		return
+	}
 
-        count, err = p.Offset(-1).Limit(-1).Count()
-        return
+	count, err = p.Offset(-1).Limit(-1).Count()
+	return
 }
 
 func (p peerTraceDo) ScanByPage(result interface{}, offset int, limit int) (count int64, err error) {
-        count, err = p.Count()
-        if err != nil {
-                return
-        }
+	count, err = p.Count()
+	if err != nil {
+		return
+	}
 
-        err = p.Offset(offset).Limit(limit).Scan(result)
-        return
+	err = p.Offset(offset).Limit(limit).Scan(result)
+	return
 }
 
 func (p peerTraceDo) Scan(result interface{}) (err error) {
-        return p.DO.Scan(result)
+	return p.DO.Scan(result)
 }
 
 func (p peerTraceDo) Delete(models ...*model.PeerTrace) (result gen.ResultInfo, err error) {
-        return p.DO.Delete(models)
+	return p.DO.Delete(models)
 }
 
 func (p *peerTraceDo) withDO(do gen.Dao) *peerTraceDo {
-        p.DO = *do.(*gen.DO)
-        return p
+	p.DO = *do.(*gen.DO)
+	return p
 }

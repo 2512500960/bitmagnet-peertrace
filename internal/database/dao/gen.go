@@ -24,6 +24,7 @@ var (
 	ContentCollectionContent *contentCollectionContent
 	KeyValue                 *keyValue
 	MetadataSource           *metadataSource
+	PeerTrace                *peerTrace
 	QueueJob                 *queueJob
 	Torrent                  *torrent
 	TorrentContent           *torrentContent
@@ -44,6 +45,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	ContentCollectionContent = &Q.ContentCollectionContent
 	KeyValue = &Q.KeyValue
 	MetadataSource = &Q.MetadataSource
+	PeerTrace = &Q.PeerTrace
 	QueueJob = &Q.QueueJob
 	Torrent = &Q.Torrent
 	TorrentContent = &Q.TorrentContent
@@ -65,7 +67,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		ContentCollectionContent: newContentCollectionContent(db, opts...),
 		KeyValue:                 newKeyValue(db, opts...),
 		MetadataSource:           newMetadataSource(db, opts...),
-		PeerTrace:                 newPeerTrace(db, opts...),
+		PeerTrace:                newPeerTrace(db, opts...),
 		QueueJob:                 newQueueJob(db, opts...),
 		Torrent:                  newTorrent(db, opts...),
 		TorrentContent:           newTorrentContent(db, opts...),
@@ -112,7 +114,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		ContentCollectionContent: q.ContentCollectionContent.clone(db),
 		KeyValue:                 q.KeyValue.clone(db),
 		MetadataSource:           q.MetadataSource.clone(db),
-		PeerTrace:                 q.PeerTrace.clone(db),
+		PeerTrace:                q.PeerTrace.clone(db),
 		QueueJob:                 q.QueueJob.clone(db),
 		Torrent:                  q.Torrent.clone(db),
 		TorrentContent:           q.TorrentContent.clone(db),
@@ -143,7 +145,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		ContentCollectionContent: q.ContentCollectionContent.replaceDB(db),
 		KeyValue:                 q.KeyValue.replaceDB(db),
 		MetadataSource:           q.MetadataSource.replaceDB(db),
-		PeerTrace:                 q.PeerTrace.replaceDB(db),
+		PeerTrace:                q.PeerTrace.replaceDB(db),
 		QueueJob:                 q.QueueJob.replaceDB(db),
 		Torrent:                  q.Torrent.replaceDB(db),
 		TorrentContent:           q.TorrentContent.replaceDB(db),
@@ -164,7 +166,7 @@ type queryCtx struct {
 	ContentCollectionContent IContentCollectionContentDo
 	KeyValue                 IKeyValueDo
 	MetadataSource           IMetadataSourceDo
-	PeerTrace                 *peerTraceDo
+	PeerTrace                IPeerTraceDo
 	QueueJob                 IQueueJobDo
 	Torrent                  ITorrentDo
 	TorrentContent           ITorrentContentDo
@@ -185,7 +187,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		ContentCollectionContent: q.ContentCollectionContent.WithContext(ctx),
 		KeyValue:                 q.KeyValue.WithContext(ctx),
 		MetadataSource:           q.MetadataSource.WithContext(ctx),
-		PeerTrace:                 q.PeerTrace.WithContext(ctx),
+		PeerTrace:                q.PeerTrace.WithContext(ctx),
 		QueueJob:                 q.QueueJob.WithContext(ctx),
 		Torrent:                  q.Torrent.WithContext(ctx),
 		TorrentContent:           q.TorrentContent.WithContext(ctx),
