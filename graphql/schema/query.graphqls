@@ -77,13 +77,35 @@ type PeerTraceTorrentsTrace {
 type PeerTraceTorrentsTraceResult{
   torrentTraces: [PeerTraceTorrentsTrace!]!
 }
+type PeersLocationByInfohashResult{
+  peers: [PeerTraceWithLocation!]!
+  totalCount:Int!
+}
+type PeerTraceWithLocation{
+  ip: String!
+  infoHash: Hash20!
+  lastSeenTime: DateTime!
+  location: IPLocation!
+}
+type ASN{
+  AutonomousSystemNumber: Int!
+  AutonomousSystemOrganization: String!
+}
+type IPLocation{
+  country: String!
+  city: String!
+  asn: ASN!
+  latitude: Float!
+  longitude: Float!
 
+}
 type PeerTraceQuery{
   peerTrace: [PeerTrace!]!
   filteredTraces(
     input: PeerTraceFilterInput!
   ): [PeerTrace!]!
   torrentsByIP(ip:String!): PeerTraceTorrentsTraceResult!
+  peersByInfohash(infoHash:Hash20!): PeersLocationByInfohashResult!
 }
 
 input PeerTraceFilterInput {

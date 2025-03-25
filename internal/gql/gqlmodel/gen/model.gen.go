@@ -15,6 +15,11 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 )
 
+type Asn struct {
+	AutonomousSystemNumber       int    `json:"AutonomousSystemNumber"`
+	AutonomousSystemOrganization string `json:"AutonomousSystemOrganization"`
+}
+
 type ContentTypeAgg struct {
 	Value      *model.ContentType `json:"value,omitempty"`
 	Label      string             `json:"label"`
@@ -52,6 +57,14 @@ type HealthQuery struct {
 	Checks []HealthCheck `json:"checks"`
 }
 
+type IPLocation struct {
+	Country   string  `json:"country"`
+	City      string  `json:"city"`
+	Asn       Asn     `json:"asn"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
 type LanguageAgg struct {
 	Value      model.Language `json:"value"`
 	Label      string         `json:"label"`
@@ -80,6 +93,18 @@ type PeerTraceTorrentsTrace struct {
 
 type PeerTraceTorrentsTraceResult struct {
 	TorrentTraces []PeerTraceTorrentsTrace `json:"torrentTraces"`
+}
+
+type PeerTraceWithLocation struct {
+	IP           string      `json:"ip"`
+	InfoHash     protocol.ID `json:"infoHash"`
+	LastSeenTime time.Time   `json:"lastSeenTime"`
+	Location     IPLocation  `json:"location"`
+}
+
+type PeersLocationByInfohashResult struct {
+	Peers      []PeerTraceWithLocation `json:"peers"`
+	TotalCount int                     `json:"totalCount"`
 }
 
 type Query struct {

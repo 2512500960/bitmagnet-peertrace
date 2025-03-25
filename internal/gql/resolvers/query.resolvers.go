@@ -14,6 +14,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/gql/gqlmodel/gen"
 	"github.com/bitmagnet-io/bitmagnet/internal/health"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/version"
 )
 
@@ -32,6 +33,12 @@ func (r *peerTraceQueryResolver) FilteredTraces(ctx context.Context, obj *gqlmod
 // TorrentsByIP is the resolver for the torrentsByIP field.
 func (r *peerTraceQueryResolver) TorrentsByIP(ctx context.Context, obj *gqlmodel.PeerTraceQuery, ip string) (gen.PeerTraceTorrentsTraceResult, error) {
 	result, err := obj.PeerTraceSearch.PeerTraceTorrents(ctx, ip)
+	return result, err
+}
+
+// PeersByInfohash is the resolver for the peersByInfohash field.
+func (r *peerTraceQueryResolver) PeersByInfohash(ctx context.Context, obj *gqlmodel.PeerTraceQuery, infoHash protocol.ID) (gen.PeersLocationByInfohashResult, error) {
+	result, err := obj.PeerTraceSearch.PeerTraceFilteredWithIpDetails(ctx, infoHash)
 	return result, err
 }
 

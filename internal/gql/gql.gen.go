@@ -63,6 +63,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	ASN struct {
+		AutonomousSystemNumber       func(childComplexity int) int
+		AutonomousSystemOrganization func(childComplexity int) int
+	}
+
 	Content struct {
 		Adult            func(childComplexity int) int
 		Attributes       func(childComplexity int) int
@@ -141,6 +146,14 @@ type ComplexityRoot struct {
 		Status func(childComplexity int) int
 	}
 
+	IPLocation struct {
+		Asn       func(childComplexity int) int
+		City      func(childComplexity int) int
+		Country   func(childComplexity int) int
+		Latitude  func(childComplexity int) int
+		Longitude func(childComplexity int) int
+	}
+
 	LanguageAgg struct {
 		Count      func(childComplexity int) int
 		IsEstimate func(childComplexity int) int
@@ -170,9 +183,10 @@ type ComplexityRoot struct {
 	}
 
 	PeerTraceQuery struct {
-		FilteredTraces func(childComplexity int, input gen.PeerTraceFilterInput) int
-		PeerTrace      func(childComplexity int) int
-		TorrentsByIP   func(childComplexity int, ip string) int
+		FilteredTraces  func(childComplexity int, input gen.PeerTraceFilterInput) int
+		PeerTrace       func(childComplexity int) int
+		PeersByInfohash func(childComplexity int, infoHash protocol.ID) int
+		TorrentsByIP    func(childComplexity int, ip string) int
 	}
 
 	PeerTraceTorrentsTrace struct {
@@ -182,6 +196,18 @@ type ComplexityRoot struct {
 
 	PeerTraceTorrentsTraceResult struct {
 		TorrentTraces func(childComplexity int) int
+	}
+
+	PeerTraceWithLocation struct {
+		IP           func(childComplexity int) int
+		InfoHash     func(childComplexity int) int
+		LastSeenTime func(childComplexity int) int
+		Location     func(childComplexity int) int
+	}
+
+	PeersLocationByInfohashResult struct {
+		Peers      func(childComplexity int) int
+		TotalCount func(childComplexity int) int
 	}
 
 	Query struct {
@@ -465,6 +491,7 @@ type PeerTraceQueryResolver interface {
 	PeerTrace(ctx context.Context, obj *gqlmodel.PeerTraceQuery) ([]model.PeerTrace, error)
 	FilteredTraces(ctx context.Context, obj *gqlmodel.PeerTraceQuery, input gen.PeerTraceFilterInput) ([]model.PeerTrace, error)
 	TorrentsByIP(ctx context.Context, obj *gqlmodel.PeerTraceQuery, ip string) (gen.PeerTraceTorrentsTraceResult, error)
+	PeersByInfohash(ctx context.Context, obj *gqlmodel.PeerTraceQuery, infoHash protocol.ID) (gen.PeersLocationByInfohashResult, error)
 }
 type QueryResolver interface {
 	Version(ctx context.Context) (string, error)
@@ -517,6 +544,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "ASN.AutonomousSystemNumber":
+		if e.complexity.ASN.AutonomousSystemNumber == nil {
+			break
+		}
+
+		return e.complexity.ASN.AutonomousSystemNumber(childComplexity), true
+
+	case "ASN.AutonomousSystemOrganization":
+		if e.complexity.ASN.AutonomousSystemOrganization == nil {
+			break
+		}
+
+		return e.complexity.ASN.AutonomousSystemOrganization(childComplexity), true
 
 	case "Content.adult":
 		if e.complexity.Content.Adult == nil {
@@ -875,6 +916,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.HealthQuery.Status(childComplexity), true
 
+	case "IPLocation.asn":
+		if e.complexity.IPLocation.Asn == nil {
+			break
+		}
+
+		return e.complexity.IPLocation.Asn(childComplexity), true
+
+	case "IPLocation.city":
+		if e.complexity.IPLocation.City == nil {
+			break
+		}
+
+		return e.complexity.IPLocation.City(childComplexity), true
+
+	case "IPLocation.country":
+		if e.complexity.IPLocation.Country == nil {
+			break
+		}
+
+		return e.complexity.IPLocation.Country(childComplexity), true
+
+	case "IPLocation.latitude":
+		if e.complexity.IPLocation.Latitude == nil {
+			break
+		}
+
+		return e.complexity.IPLocation.Latitude(childComplexity), true
+
+	case "IPLocation.longitude":
+		if e.complexity.IPLocation.Longitude == nil {
+			break
+		}
+
+		return e.complexity.IPLocation.Longitude(childComplexity), true
+
 	case "LanguageAgg.count":
 		if e.complexity.LanguageAgg.Count == nil {
 			break
@@ -985,6 +1061,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PeerTraceQuery.PeerTrace(childComplexity), true
 
+	case "PeerTraceQuery.peersByInfohash":
+		if e.complexity.PeerTraceQuery.PeersByInfohash == nil {
+			break
+		}
+
+		args, err := ec.field_PeerTraceQuery_peersByInfohash_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.PeerTraceQuery.PeersByInfohash(childComplexity, args["infoHash"].(protocol.ID)), true
+
 	case "PeerTraceQuery.torrentsByIP":
 		if e.complexity.PeerTraceQuery.TorrentsByIP == nil {
 			break
@@ -1017,6 +1105,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PeerTraceTorrentsTraceResult.TorrentTraces(childComplexity), true
+
+	case "PeerTraceWithLocation.ip":
+		if e.complexity.PeerTraceWithLocation.IP == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceWithLocation.IP(childComplexity), true
+
+	case "PeerTraceWithLocation.infoHash":
+		if e.complexity.PeerTraceWithLocation.InfoHash == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceWithLocation.InfoHash(childComplexity), true
+
+	case "PeerTraceWithLocation.lastSeenTime":
+		if e.complexity.PeerTraceWithLocation.LastSeenTime == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceWithLocation.LastSeenTime(childComplexity), true
+
+	case "PeerTraceWithLocation.location":
+		if e.complexity.PeerTraceWithLocation.Location == nil {
+			break
+		}
+
+		return e.complexity.PeerTraceWithLocation.Location(childComplexity), true
+
+	case "PeersLocationByInfohashResult.peers":
+		if e.complexity.PeersLocationByInfohashResult.Peers == nil {
+			break
+		}
+
+		return e.complexity.PeersLocationByInfohashResult.Peers(childComplexity), true
+
+	case "PeersLocationByInfohashResult.totalCount":
+		if e.complexity.PeersLocationByInfohashResult.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.PeersLocationByInfohashResult.TotalCount(childComplexity), true
 
 	case "Query.health":
 		if e.complexity.Query.Health == nil {
@@ -2801,13 +2931,35 @@ type PeerTraceTorrentsTrace {
 type PeerTraceTorrentsTraceResult{
   torrentTraces: [PeerTraceTorrentsTrace!]!
 }
+type PeersLocationByInfohashResult{
+  peers: [PeerTraceWithLocation!]!
+  totalCount:Int!
+}
+type PeerTraceWithLocation{
+  ip: String!
+  infoHash: Hash20!
+  lastSeenTime: DateTime!
+  location: IPLocation!
+}
+type ASN{
+  AutonomousSystemNumber: Int!
+  AutonomousSystemOrganization: String!
+}
+type IPLocation{
+  country: String!
+  city: String!
+  asn: ASN!
+  latitude: Float!
+  longitude: Float!
 
+}
 type PeerTraceQuery{
   peerTrace: [PeerTrace!]!
   filteredTraces(
     input: PeerTraceFilterInput!
   ): [PeerTrace!]!
   torrentsByIP(ip:String!): PeerTraceTorrentsTraceResult!
+  peersByInfohash(infoHash:Hash20!): PeersLocationByInfohashResult!
 }
 
 input PeerTraceFilterInput {
@@ -3152,6 +3304,34 @@ func (ec *executionContext) field_PeerTraceQuery_filteredTraces_argsInput(
 	}
 
 	var zeroVal gen.PeerTraceFilterInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_PeerTraceQuery_peersByInfohash_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_PeerTraceQuery_peersByInfohash_argsInfoHash(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["infoHash"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_PeerTraceQuery_peersByInfohash_argsInfoHash(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (protocol.ID, error) {
+	if _, ok := rawArgs["infoHash"]; !ok {
+		var zeroVal protocol.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("infoHash"))
+	if tmp, ok := rawArgs["infoHash"]; ok {
+		return ec.unmarshalNHash202githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx, tmp)
+	}
+
+	var zeroVal protocol.ID
 	return zeroVal, nil
 }
 
@@ -3763,6 +3943,94 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _ASN_AutonomousSystemNumber(ctx context.Context, field graphql.CollectedField, obj *gen.Asn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ASN_AutonomousSystemNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AutonomousSystemNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ASN_AutonomousSystemNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ASN",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ASN_AutonomousSystemOrganization(ctx context.Context, field graphql.CollectedField, obj *gen.Asn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ASN_AutonomousSystemOrganization(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AutonomousSystemOrganization, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ASN_AutonomousSystemOrganization(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ASN",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Content_type(ctx context.Context, field graphql.CollectedField, obj *model.Content) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Content_type(ctx, field)
@@ -6054,6 +6322,232 @@ func (ec *executionContext) fieldContext_HealthQuery_checks(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _IPLocation_country(ctx context.Context, field graphql.CollectedField, obj *gen.IPLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IPLocation_country(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Country, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IPLocation_country(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IPLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IPLocation_city(ctx context.Context, field graphql.CollectedField, obj *gen.IPLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IPLocation_city(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.City, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IPLocation_city(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IPLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IPLocation_asn(ctx context.Context, field graphql.CollectedField, obj *gen.IPLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IPLocation_asn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Asn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gen.Asn)
+	fc.Result = res
+	return ec.marshalNASN2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐAsn(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IPLocation_asn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IPLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "AutonomousSystemNumber":
+				return ec.fieldContext_ASN_AutonomousSystemNumber(ctx, field)
+			case "AutonomousSystemOrganization":
+				return ec.fieldContext_ASN_AutonomousSystemOrganization(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ASN", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IPLocation_latitude(ctx context.Context, field graphql.CollectedField, obj *gen.IPLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IPLocation_latitude(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Latitude, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IPLocation_latitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IPLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IPLocation_longitude(ctx context.Context, field graphql.CollectedField, obj *gen.IPLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IPLocation_longitude(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Longitude, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IPLocation_longitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IPLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LanguageAgg_value(ctx context.Context, field graphql.CollectedField, obj *gen.LanguageAgg) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LanguageAgg_value(ctx, field)
 	if err != nil {
@@ -6818,6 +7312,67 @@ func (ec *executionContext) fieldContext_PeerTraceQuery_torrentsByIP(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _PeerTraceQuery_peersByInfohash(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PeerTraceQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceQuery_peersByInfohash(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PeerTraceQuery().PeersByInfohash(rctx, obj, fc.Args["infoHash"].(protocol.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gen.PeersLocationByInfohashResult)
+	fc.Result = res
+	return ec.marshalNPeersLocationByInfohashResult2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeersLocationByInfohashResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceQuery_peersByInfohash(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "peers":
+				return ec.fieldContext_PeersLocationByInfohashResult_peers(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PeersLocationByInfohashResult_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeersLocationByInfohashResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_PeerTraceQuery_peersByInfohash_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PeerTraceTorrentsTrace_torrent(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceTorrentsTrace) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PeerTraceTorrentsTrace_torrent(ctx, field)
 	if err != nil {
@@ -6989,6 +7544,292 @@ func (ec *executionContext) fieldContext_PeerTraceTorrentsTraceResult_torrentTra
 				return ec.fieldContext_PeerTraceTorrentsTrace_lastSeenTime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PeerTraceTorrentsTrace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceWithLocation_ip(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceWithLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceWithLocation_ip(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IP, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceWithLocation_ip(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceWithLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceWithLocation_infoHash(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceWithLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceWithLocation_infoHash(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InfoHash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(protocol.ID)
+	fc.Result = res
+	return ec.marshalNHash202githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋprotocolᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceWithLocation_infoHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceWithLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Hash20 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceWithLocation_lastSeenTime(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceWithLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceWithLocation_lastSeenTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastSeenTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceWithLocation_lastSeenTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceWithLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerTraceWithLocation_location(ctx context.Context, field graphql.CollectedField, obj *gen.PeerTraceWithLocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeerTraceWithLocation_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gen.IPLocation)
+	fc.Result = res
+	return ec.marshalNIPLocation2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐIPLocation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeerTraceWithLocation_location(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerTraceWithLocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "country":
+				return ec.fieldContext_IPLocation_country(ctx, field)
+			case "city":
+				return ec.fieldContext_IPLocation_city(ctx, field)
+			case "asn":
+				return ec.fieldContext_IPLocation_asn(ctx, field)
+			case "latitude":
+				return ec.fieldContext_IPLocation_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_IPLocation_longitude(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IPLocation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeersLocationByInfohashResult_peers(ctx context.Context, field graphql.CollectedField, obj *gen.PeersLocationByInfohashResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeersLocationByInfohashResult_peers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Peers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]gen.PeerTraceWithLocation)
+	fc.Result = res
+	return ec.marshalNPeerTraceWithLocation2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceWithLocationᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeersLocationByInfohashResult_peers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeersLocationByInfohashResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ip":
+				return ec.fieldContext_PeerTraceWithLocation_ip(ctx, field)
+			case "infoHash":
+				return ec.fieldContext_PeerTraceWithLocation_infoHash(ctx, field)
+			case "lastSeenTime":
+				return ec.fieldContext_PeerTraceWithLocation_lastSeenTime(ctx, field)
+			case "location":
+				return ec.fieldContext_PeerTraceWithLocation_location(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerTraceWithLocation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeersLocationByInfohashResult_totalCount(ctx context.Context, field graphql.CollectedField, obj *gen.PeersLocationByInfohashResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeersLocationByInfohashResult_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeersLocationByInfohashResult_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeersLocationByInfohashResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7333,6 +8174,8 @@ func (ec *executionContext) fieldContext_Query_peerTrace(_ context.Context, fiel
 				return ec.fieldContext_PeerTraceQuery_filteredTraces(ctx, field)
 			case "torrentsByIP":
 				return ec.fieldContext_PeerTraceQuery_torrentsByIP(ctx, field)
+			case "peersByInfohash":
+				return ec.fieldContext_PeerTraceQuery_peersByInfohash(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PeerTraceQuery", field.Name)
 		},
@@ -17846,6 +18689,50 @@ func (ec *executionContext) unmarshalInputVideoSourceFacetInput(ctx context.Cont
 
 // region    **************************** object.gotpl ****************************
 
+var aSNImplementors = []string{"ASN"}
+
+func (ec *executionContext) _ASN(ctx context.Context, sel ast.SelectionSet, obj *gen.Asn) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aSNImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ASN")
+		case "AutonomousSystemNumber":
+			out.Values[i] = ec._ASN_AutonomousSystemNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "AutonomousSystemOrganization":
+			out.Values[i] = ec._ASN_AutonomousSystemOrganization(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var contentImplementors = []string{"Content"}
 
 func (ec *executionContext) _Content(ctx context.Context, sel ast.SelectionSet, obj *model.Content) graphql.Marshaler {
@@ -18402,6 +19289,65 @@ func (ec *executionContext) _HealthQuery(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var iPLocationImplementors = []string{"IPLocation"}
+
+func (ec *executionContext) _IPLocation(ctx context.Context, sel ast.SelectionSet, obj *gen.IPLocation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, iPLocationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IPLocation")
+		case "country":
+			out.Values[i] = ec._IPLocation_country(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "city":
+			out.Values[i] = ec._IPLocation_city(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "asn":
+			out.Values[i] = ec._IPLocation_asn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latitude":
+			out.Values[i] = ec._IPLocation_latitude(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "longitude":
+			out.Values[i] = ec._IPLocation_longitude(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var languageAggImplementors = []string{"LanguageAgg"}
 
 func (ec *executionContext) _LanguageAgg(ctx context.Context, sel ast.SelectionSet, obj *gen.LanguageAgg) graphql.Marshaler {
@@ -18768,6 +19714,42 @@ func (ec *executionContext) _PeerTraceQuery(ctx context.Context, sel ast.Selecti
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "peersByInfohash":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PeerTraceQuery_peersByInfohash(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -18848,6 +19830,104 @@ func (ec *executionContext) _PeerTraceTorrentsTraceResult(ctx context.Context, s
 			out.Values[i] = graphql.MarshalString("PeerTraceTorrentsTraceResult")
 		case "torrentTraces":
 			out.Values[i] = ec._PeerTraceTorrentsTraceResult_torrentTraces(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peerTraceWithLocationImplementors = []string{"PeerTraceWithLocation"}
+
+func (ec *executionContext) _PeerTraceWithLocation(ctx context.Context, sel ast.SelectionSet, obj *gen.PeerTraceWithLocation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerTraceWithLocationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerTraceWithLocation")
+		case "ip":
+			out.Values[i] = ec._PeerTraceWithLocation_ip(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "infoHash":
+			out.Values[i] = ec._PeerTraceWithLocation_infoHash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSeenTime":
+			out.Values[i] = ec._PeerTraceWithLocation_lastSeenTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "location":
+			out.Values[i] = ec._PeerTraceWithLocation_location(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peersLocationByInfohashResultImplementors = []string{"PeersLocationByInfohashResult"}
+
+func (ec *executionContext) _PeersLocationByInfohashResult(ctx context.Context, sel ast.SelectionSet, obj *gen.PeersLocationByInfohashResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peersLocationByInfohashResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeersLocationByInfohashResult")
+		case "peers":
+			out.Values[i] = ec._PeersLocationByInfohashResult_peers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._PeersLocationByInfohashResult_totalCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -21701,6 +22781,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNASN2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐAsn(ctx context.Context, sel ast.SelectionSet, v gen.Asn) graphql.Marshaler {
+	return ec._ASN(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -21927,6 +23011,21 @@ func (ec *executionContext) marshalNFilesStatus2githubᚗcomᚋbitmagnetᚑioᚋ
 	return res
 }
 
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
+	res, err := graphql.UnmarshalFloat(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	res := graphql.MarshalFloat(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNGenreAgg2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐGenreAgg(ctx context.Context, sel ast.SelectionSet, v gen.GenreAgg) graphql.Marshaler {
 	return ec._GenreAgg(ctx, sel, &v)
 }
@@ -22048,6 +23147,10 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNIPLocation2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐIPLocation(ctx context.Context, sel ast.SelectionSet, v gen.IPLocation) graphql.Marshaler {
+	return ec._IPLocation(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
@@ -22225,6 +23328,58 @@ func (ec *executionContext) marshalNPeerTraceTorrentsTrace2ᚕgithubᚗcomᚋbit
 
 func (ec *executionContext) marshalNPeerTraceTorrentsTraceResult2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceTorrentsTraceResult(ctx context.Context, sel ast.SelectionSet, v gen.PeerTraceTorrentsTraceResult) graphql.Marshaler {
 	return ec._PeerTraceTorrentsTraceResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPeerTraceWithLocation2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceWithLocation(ctx context.Context, sel ast.SelectionSet, v gen.PeerTraceWithLocation) graphql.Marshaler {
+	return ec._PeerTraceWithLocation(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPeerTraceWithLocation2ᚕgithubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceWithLocationᚄ(ctx context.Context, sel ast.SelectionSet, v []gen.PeerTraceWithLocation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPeerTraceWithLocation2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeerTraceWithLocation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPeersLocationByInfohashResult2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋgqlᚋgqlmodelᚋgenᚐPeersLocationByInfohashResult(ctx context.Context, sel ast.SelectionSet, v gen.PeersLocationByInfohashResult) graphql.Marshaler {
+	return ec._PeersLocationByInfohashResult(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNQueueJob2githubᚗcomᚋbitmagnetᚑioᚋbitmagnetᚋinternalᚋmodelᚐQueueJob(ctx context.Context, sel ast.SelectionSet, v model.QueueJob) graphql.Marshaler {

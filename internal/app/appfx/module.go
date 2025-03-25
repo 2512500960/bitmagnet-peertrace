@@ -11,6 +11,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/database/databasefx"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/migrations"
 	"github.com/bitmagnet-io/bitmagnet/internal/dhtcrawler/dhtcrawlerfx"
+	"github.com/bitmagnet-io/bitmagnet/internal/geodb/geodbfx"
 	"github.com/bitmagnet-io/bitmagnet/internal/gql/gqlfx"
 	"github.com/bitmagnet-io/bitmagnet/internal/health/healthfx"
 	"github.com/bitmagnet-io/bitmagnet/internal/importer/importerfx"
@@ -30,6 +31,7 @@ import (
 func New() fx.Option {
 	return fx.Module(
 		"app",
+		geodbfx.New(),
 		blockingfx.New(),
 		boilerplateappfx.New(),
 		dhtcrawlerfx.New(),

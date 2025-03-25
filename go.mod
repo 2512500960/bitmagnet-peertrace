@@ -28,6 +28,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mgdigital/gorm-cache/v2 v2.0.0-20230912113927-f2a8dd92a386
 	github.com/mozillazg/go-unidecode v0.2.0
+	github.com/oschwald/geoip2-golang v1.11.0
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/cors v1.11.1
@@ -52,6 +53,8 @@ require (
 	gorm.io/gorm v1.25.12
 	gorm.io/plugin/dbresolver v1.5.3
 )
+
+require github.com/oschwald/maxminddb-golang v1.13.0 // indirect
 
 require (
 	cel.dev/expr v0.19.1 // indirect
