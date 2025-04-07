@@ -4,7 +4,8 @@ A self-hosted BitTorrent indexer, DHT crawler, content classifier and torrent se
 
 Visit the website at [bitmagnet.io](https://bitmagnet.io).
 
-ADDED PEERTRACE function like https://iknowwhatyoudownload.com/, for 
+ADDED PEERTRACE function like https://iknowwhatyoudownload.com/, for privacy implications, this function records China IP related information only, 
+traces of IPs from other Country/Region would not be recorded.
 
 To compile : `go build -ldflags "-X github.com/bitmagnet-io/bitmagnet/internal/version.GitTag=$(git describe --tags --always --dirty)"`
 Geodb file download: https://github.com/P3TERX/GeoLite.mmdb, put it in internal/geodb/
