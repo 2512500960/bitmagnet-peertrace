@@ -3,9 +3,10 @@ package dhtcrawler
 import (
 	"context"
 	"database/sql/driver"
+	"time"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
-	"time"
 )
 
 // runInfoHashTriage receives discovered hashes on the infoHashTriage channel, determines if they should be crawled,
@@ -76,6 +77,7 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					case c.getPeers.In() <- r:
+						c.logger.Debugf("try to get metainfo of %s", r.infoHash)
 						continue
 					}
 				} else if !(t.Seeders.Valid && t.Leechers.Valid) || t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {

@@ -16,6 +16,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/banning"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	boom "github.com/tylertreat/BoomFilters"
 	"go.uber.org/fx"
@@ -35,6 +36,9 @@ type Params struct {
 	DiscoveredNodes                concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
 	Logger                         *zap.SugaredLogger
 	PeerTraceInfoHashWithPeersChan concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
+	SearchGeoIPReaderCity          *geoip2.Reader `name:"geoip_city"`
+	SearchGeoIPReaderASN           *geoip2.Reader `name:"geoip_asn"`
+	SearchGeoIPReaderCN            *geoip2.Reader `name:"geoip_cn"`
 }
 
 type Result struct {
@@ -108,11 +112,14 @@ func New(params Params) Result {
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},
-						blockingManager: blockingManager,
-						soughtNodeID:    &concurrency.AtomicValue[protocol.ID]{},
-						stopped:         make(chan struct{}),
-						persistedTotal:  persistedTotal,
-						logger:          params.Logger.Named("dht_crawler"),
+						blockingManager:       blockingManager,
+						soughtNodeID:          &concurrency.AtomicValue[protocol.ID]{},
+						stopped:               make(chan struct{}),
+						persistedTotal:        persistedTotal,
+						logger:                params.Logger.Named("dht_crawler"),
+						SearchGeoIPReaderCity: params.SearchGeoIPReaderCity,
+						SearchGeoIPReaderASN:  params.SearchGeoIPReaderASN,
+						SearchGeoIPReaderCN:   params.SearchGeoIPReaderCN,
 					}
 					c.soughtNodeID.Set(protocol.RandomNodeID())
 					go c.start()

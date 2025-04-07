@@ -17,6 +17,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/banning"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	boom "github.com/tylertreat/BoomFilters"
 	"go.uber.org/zap"
@@ -57,6 +58,10 @@ type crawler struct {
 	stopped        chan struct{}
 	persistedTotal *prometheus.CounterVec
 	logger         *zap.SugaredLogger
+
+	SearchGeoIPReaderCity *geoip2.Reader `name:"geoip_city"`
+	SearchGeoIPReaderASN  *geoip2.Reader `name:"geoip_asn"`
+	SearchGeoIPReaderCN   *geoip2.Reader `name:"geoip_cn"`
 }
 
 func (c *crawler) start() {
@@ -79,6 +84,8 @@ func (c *crawler) start() {
 	go c.runPersistSources(ctx)
 	go c.getOldNodes(ctx)
 	go c.runPeerTrace(ctx)
+	//go c.runPeerTraceRuminate(ctx)
+	//go c.runPeerTraceRuminateMissingHashes(ctx)
 	<-c.stopped
 }
 

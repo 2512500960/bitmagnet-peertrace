@@ -1,9 +1,11 @@
 package ktable
 
 import (
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"net"
 	"net/netip"
 	"time"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 )
 
 type nodeKeyspace struct {
@@ -143,6 +145,11 @@ func (n *node) Dropped() bool {
 func (n *node) IsSampleInfoHashesCandidate() bool {
 	now := time.Now()
 	threshold := now.Add(-(5 * time.Second))
+	ip_city, err := searchGeoIPReaderCity.City(net.ParseIP(n.addr.String()))
+	if err == nil && ip_city.Country.IsoCode != "CN" {
+		return false
+	}
+
 	return n.bep51Support != protocolSupportNo &&
 		n.nextSampleInfoHashesTime.Before(now) &&
 		n.lastRespondedAt.Before(threshold)

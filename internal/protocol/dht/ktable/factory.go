@@ -1,16 +1,22 @@
 package ktable
 
 import (
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable/btree"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/fx"
 	"net/netip"
 	"time"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable/btree"
+	"github.com/oschwald/geoip2-golang"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/fx"
 )
 
 type Params struct {
 	fx.In
 	NodeID ID `name:"dht_node_id"`
+
+	SearchGeoIPReaderCity *geoip2.Reader `name:"geoip_city"`
+	SearchGeoIPReaderASN  *geoip2.Reader `name:"geoip_asn"`
+	SearchGeoIPReaderCN   *geoip2.Reader `name:"geoip_cn"`
 }
 
 type Result struct {
@@ -24,10 +30,13 @@ type Result struct {
 	HashesDroppedCounter prometheus.Collector `group:"prometheus_collectors"`
 }
 
-const nodesK = 80
-const hashesK = 80
+var searchGeoIPReaderCity *geoip2.Reader
+
+const nodesK = 160
+const hashesK = 160
 
 func New(p Params) Result {
+	searchGeoIPReaderCity = p.SearchGeoIPReaderCity
 	rm := &reverseMap{addrs: make(map[string]*infoForAddr)}
 	nodes := nodeKeyspace{
 		keyspace: newKeyspace[netip.AddrPort, NodeOption, Node, *node](

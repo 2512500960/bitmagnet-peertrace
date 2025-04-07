@@ -3,10 +3,11 @@ package dhtcrawler
 import (
 	"context"
 	"errors"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
-	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
 	"net/netip"
 	"sync"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
 )
 
 func (c *crawler) runRequestMetaInfo(ctx context.Context) {
@@ -15,6 +16,7 @@ func (c *crawler) runRequestMetaInfo(ctx context.Context) {
 		if reqErr != nil {
 			return
 		}
+		c.logger.Infof("metainfo request success on %s", req.infoHash)
 		select {
 		case <-ctx.Done():
 		case c.persistTorrents.In() <- infoHashWithMetaInfo{
