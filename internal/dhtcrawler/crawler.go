@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anacrolix/torrent"
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/bloom"
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
@@ -14,6 +15,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/responder"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/banning"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
@@ -24,6 +26,7 @@ import (
 )
 
 type crawler struct {
+	config                       Config
 	kTable                       ktable.Table
 	client                       client.Client
 	metainfoRequester            metainforequester.Requester
@@ -37,12 +40,16 @@ type crawler struct {
 	nodesForFindNode             concurrency.BufferedConcurrentChannel[ktable.Node]
 	nodesForSampleInfoHashes     concurrency.BufferedConcurrentChannel[ktable.Node]
 	infoHashTriage               concurrency.BatchingChannel[nodeHasPeersForHash]
+	infoHashTriagePassive        concurrency.BatchingChannel[responder.NodeHasPeersForHashResponder]
 	getPeers                     concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	scrape                       concurrency.BufferedConcurrentChannel[nodeHasPeersForHash]
 	requestMetaInfo              concurrency.BufferedConcurrentChannel[infoHashWithPeers]
 	persistTorrents              concurrency.BatchingChannel[infoHashWithMetaInfo]
 	peerTraceInfoHashWithPeers   concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
+	peerTracePrune               concurrency.BatchingChannel[peertrace.PeerTracePrune]
 	persistSources               concurrency.BatchingChannel[infoHashWithScrape]
+	infohashToDownloaderChannel  concurrency.BufferedConcurrentChannel[protocol.ID]
+	torrentDownloaderClient      *torrent.Client
 	rescrapeThreshold            time.Duration
 	saveFilesThreshold           uint
 	savePieces                   bool
@@ -73,9 +80,12 @@ func (c *crawler) start() {
 	go c.runPing(ctx)
 	go c.runFindNode(ctx)
 	go c.getNodesForFindNode(ctx)
-	go c.runSampleInfoHashes(ctx)
+	if c.config.UsingSamplingHashes {
+		go c.runSampleInfoHashes(ctx)
+	}
 	go c.getNodesForSampleInfoHashes(ctx)
 	go c.runInfoHashTriage(ctx)
+	//go c.runInfoHashTriagePassively(ctx)
 	go c.runGetPeers(ctx)
 	go c.runRequestMetaInfo(ctx)
 	go c.runScrape(ctx)
@@ -83,15 +93,23 @@ func (c *crawler) start() {
 	go c.runPersistTorrents(ctx)
 	go c.runPersistSources(ctx)
 	go c.getOldNodes(ctx)
+
 	go c.runPeerTrace(ctx)
+	go c.runPeerTracePrune(ctx)
 	//go c.runPeerTraceRuminate(ctx)
+	if c.config.RetrieveMissingHashes {
+		go c.runPeerTraceRuminateMissingHashes(ctx)
+	}
 	//go c.runPeerTraceRuminateMissingHashes(ctx)
+	//go c.runPeerTraceRuminateMissingHashesTest(ctx)
+	go c.runDownloader(ctx)
 	<-c.stopped
 }
 
 type nodeHasPeersForHash struct {
 	infoHash protocol.ID
 	node     netip.AddrPort
+	source   string
 }
 
 type infoHashWithMetaInfo struct {

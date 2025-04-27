@@ -24,17 +24,19 @@ type Params struct {
 
 type Result struct {
 	fx.Out
-	Responder         Responder
-	QueryDuration     prometheus.Collector `group:"prometheus_collectors"`
-	QuerySuccessTotal prometheus.Collector `group:"prometheus_collectors"`
-	QueryErrorTotal   prometheus.Collector `group:"prometheus_collectors"`
-	QueryConcurrency  prometheus.Collector `group:"prometheus_collectors"`
+	Responder             Responder
+	QueryDuration         prometheus.Collector `group:"prometheus_collectors"`
+	QuerySuccessTotal     prometheus.Collector `group:"prometheus_collectors"`
+	QueryErrorTotal       prometheus.Collector `group:"prometheus_collectors"`
+	QueryConcurrency      prometheus.Collector `group:"prometheus_collectors"`
+	InfoHashTriagePassive concurrency.BatchingChannel[NodeHasPeersForHashResponder]
 }
 
 const namespace = "bitmagnet"
 const subsystem = "dht_responder"
 
 func New(p Params) Result {
+	infoHashTriagePassive := concurrency.NewBatchingChannel[NodeHasPeersForHashResponder](10*100, 1000, 20*time.Second)
 	collector := newPrometheusCollector(responderLimiter{
 		responder: responder{
 			nodeID:                         p.KTable.Origin(),
@@ -42,9 +44,11 @@ func New(p Params) Result {
 			tokenSecret:                    protocol.RandomNodeID().Bytes(),
 			sampleInfoHashesInterval:       10,
 			peerTraceInfoHashWithPeersChan: p.PeerTraceInfoHashWithPeersChan,
+			infoHashTriagePassive:          infoHashTriagePassive,
 		},
 		limiter: NewLimiter(rate.Every(time.Second/50), 20, rate.Every(time.Second), 10, 1000, time.Second*20),
 	})
+
 	return Result{
 		Responder: responderNodeDiscovery{
 			responder: responderLogger{
@@ -55,9 +59,10 @@ func New(p Params) Result {
 			},
 			discoveredNodes: p.DiscoveredNodes.In(),
 		},
-		QueryDuration:     collector.queryDuration,
-		QuerySuccessTotal: collector.querySuccessTotal,
-		QueryErrorTotal:   collector.queryErrorTotal,
-		QueryConcurrency:  collector.queryConcurrency,
+		QueryDuration:         collector.queryDuration,
+		QuerySuccessTotal:     collector.querySuccessTotal,
+		QueryErrorTotal:       collector.queryErrorTotal,
+		QueryConcurrency:      collector.queryConcurrency,
+		InfoHashTriagePassive: infoHashTriagePassive,
 	}
 }

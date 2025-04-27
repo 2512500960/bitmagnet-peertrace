@@ -32,8 +32,8 @@ type Result struct {
 
 var searchGeoIPReaderCity *geoip2.Reader
 
-const nodesK = 160
-const hashesK = 160
+const nodesK = 1280
+const hashesK = 1280
 
 func New(p Params) Result {
 	searchGeoIPReaderCity = p.SearchGeoIPReaderCity

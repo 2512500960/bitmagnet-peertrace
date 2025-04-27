@@ -69,7 +69,15 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 			}
 			for h := range filteredHashMap {
 				r := reqMap[h]
-				if t, ok := foundTorrents[r.infoHash]; !ok ||
+				if r.source == "ruminate" {
+					c.logger.Debugf("try to get metainfo of %s ", r.infoHash, r.source)
+					select {
+					case <-ctx.Done():
+						return
+					case c.infohashToDownloaderChannel.In() <- r.infoHash:
+						continue
+					}
+				} else if t, ok := foundTorrents[r.infoHash]; !ok ||
 					t.FilesStatus == model.FilesStatusNoInfo ||
 					(t.FilesStatus != model.FilesStatusSingle && !t.FilesCount.Valid) ||
 					(t.FilesStatus == model.FilesStatusOverThreshold && t.FilesCount.Uint <= c.saveFilesThreshold) {
@@ -77,7 +85,7 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 					case <-ctx.Done():
 						return
 					case c.getPeers.In() <- r:
-						c.logger.Debugf("try to get metainfo of %s", r.infoHash)
+						c.logger.Debugf("try to get metainfo of %s ", r.infoHash, r.source)
 						continue
 					}
 				} else if !(t.Seeders.Valid && t.Leechers.Valid) || t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {
@@ -89,6 +97,30 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 					}
 				}
 			}
+		}
+	}
+}
+func (c *crawler) runInfoHashTriagePassively(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case reqs := <-c.infoHashTriagePassive.Out():
+			for _, req := range reqs {
+				select {
+				case <-ctx.Done():
+					return
+				case c.infoHashTriage.In() <- nodeHasPeersForHash{
+					infoHash: req.InfoHash,
+					source:   req.SourceRequestType,
+					node:     req.Node,
+				}:
+					continue
+				}
+
+			}
+
+			continue
 		}
 	}
 }

@@ -16,7 +16,7 @@ func (c *crawler) runRequestMetaInfo(ctx context.Context) {
 		if reqErr != nil {
 			return
 		}
-		c.logger.Infof("metainfo request success on %s", req.infoHash)
+		c.logger.Infof("metainfo request success on %s source %s", req.infoHash, req.source)
 		select {
 		case <-ctx.Done():
 		case c.persistTorrents.In() <- infoHashWithMetaInfo{

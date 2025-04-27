@@ -12,3 +12,10 @@ type PeerTraceInfoHashWithPeers struct {
 	InfoHash protocol.ID
 	Peers    []netip.AddrPort
 }
+
+type PeerTracePrune struct {
+	Source   string
+	InfoHash protocol.ID
+	Peers    netip.AddrPort
+	Criteria string
+}

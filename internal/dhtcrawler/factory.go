@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/anacrolix/torrent"
 	"github.com/bitmagnet-io/bitmagnet/internal/blocking"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/boilerplate/worker"
@@ -14,6 +15,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/responder"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/banning"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/metainforequester"
 	"github.com/oschwald/geoip2-golang"
@@ -36,9 +38,13 @@ type Params struct {
 	DiscoveredNodes                concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
 	Logger                         *zap.SugaredLogger
 	PeerTraceInfoHashWithPeersChan concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
+	PeerTracePruneChan             concurrency.BatchingChannel[peertrace.PeerTracePrune]
 	SearchGeoIPReaderCity          *geoip2.Reader `name:"geoip_city"`
 	SearchGeoIPReaderASN           *geoip2.Reader `name:"geoip_asn"`
 	SearchGeoIPReaderCN            *geoip2.Reader `name:"geoip_cn"`
+	InfoHashTriagePassive          concurrency.BatchingChannel[responder.NodeHasPeersForHashResponder]
+	InfohashToDownloaderChannel    concurrency.BufferedConcurrentChannel[protocol.ID]
+	TorrentDownloaderClient        *torrent.Client
 }
 
 type Result struct {
@@ -78,6 +84,7 @@ func New(params Params) Result {
 						return err
 					}
 					c = crawler{
+						config:                       params.Config,
 						kTable:                       params.KTable,
 						client:                       cl,
 						metainfoRequester:            params.MetainfoRequester,
@@ -91,10 +98,14 @@ func New(params Params) Result {
 						nodesForFindNode:             concurrency.NewBufferedConcurrentChannel[ktable.Node](10*scalingFactor, 10*scalingFactor),
 						nodesForSampleInfoHashes:     concurrency.NewBufferedConcurrentChannel[ktable.Node](10*scalingFactor, 10*scalingFactor),
 						infoHashTriage:               concurrency.NewBatchingChannel[nodeHasPeersForHash](10*scalingFactor, 1000, 20*time.Second),
+						infoHashTriagePassive:        params.InfoHashTriagePassive,
 						getPeers:                     concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						scrape:                       concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](10*scalingFactor, 20*scalingFactor),
 						requestMetaInfo:              concurrency.NewBufferedConcurrentChannel[infoHashWithPeers](10*scalingFactor, 40*scalingFactor),
 						peerTraceInfoHashWithPeers:   params.PeerTraceInfoHashWithPeersChan,
+						infohashToDownloaderChannel:  params.InfohashToDownloaderChannel,
+						peerTracePrune:               params.PeerTracePruneChan,
+						torrentDownloaderClient:      params.TorrentDownloaderClient,
 						persistTorrents: concurrency.NewBatchingChannel[infoHashWithMetaInfo](
 							1000,
 							1000,

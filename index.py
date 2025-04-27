@@ -70,7 +70,7 @@ def print_html_header():
     <!DOCTYPE html>
     <html>
     <head>
-    <title>GraphQL Torrent Data</title>
+    <title>Index</title>
     <style type="text/css">
         .tftable {{
             font-size: 14px;
@@ -146,13 +146,13 @@ def do_query_by_ip(client_ip):
     try:
         torrent_traces = data["data"]["peerTrace"]["torrentsByIP"]["torrentTraces"]
     except (KeyError, TypeError):
-        print("<p>No torrent data available</p>")
+        print("<p>No data available</p>")
         exit()
     print_html_header()
     print(
        f"""
         <body>
-        <h1>Torrent Data</h1>
+        <h1>Data</h1>
         <p>Fetching data for IP: <span id="clientIP">{html.escape(client_ip)}</span></p>
         <table class="tftable">
         <thead>
@@ -231,7 +231,7 @@ def do_query_by_infosh(infohash):
     print(
         f"""
     <body>
-    <h1>Torrent Data</h1>
+    <h1>Data</h1>
     <p>Showing peers for InfoHash: <span id="infoHash">{html.escape(infohash)}</span></p>
     <table class="tftable">
     <thead>

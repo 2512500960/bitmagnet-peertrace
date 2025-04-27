@@ -18,7 +18,13 @@ type Config struct {
 	// The pieces take up quite a lot of space, and aren't currently very useful, but they may be used by future features.
 	SavePieces bool
 	// RescrapeThreshold is the amount of time that must pass before a torrent is rescraped to count seeders and leechers.
-	RescrapeThreshold time.Duration
+	RescrapeThreshold     time.Duration
+	RetrieveMissingHashes bool
+	UsingSamplingHashes   bool
+	DownloaderPort        uint
+	DownloaderDebug       bool
+	DownloaderAddr        string
+	DownloaderConcurrency uint
 }
 
 func NewDefaultConfig() Config {
@@ -29,6 +35,12 @@ func NewDefaultConfig() Config {
 		SaveFilesThreshold:           100,
 		SavePieces:                   false,
 		RescrapeThreshold:            time.Hour * 24 * 30,
+		DownloaderPort:               3335,
+		DownloaderAddr:               "0.0.0.0",
+		DownloaderDebug:              false,
+		RetrieveMissingHashes:        false,
+		UsingSamplingHashes:          true,
+		DownloaderConcurrency:        400,
 	}
 }
 

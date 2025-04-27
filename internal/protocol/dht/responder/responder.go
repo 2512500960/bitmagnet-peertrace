@@ -1,12 +1,14 @@
 package responder
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"net/netip"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/peertrace"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
@@ -17,12 +19,19 @@ type Responder interface {
 	Respond(context.Context, dht.RecvMsg) (dht.Return, error)
 }
 
+type NodeHasPeersForHashResponder struct {
+	InfoHash          protocol.ID
+	Node              netip.AddrPort
+	SourceRequestType string
+}
+
 type responder struct {
 	nodeID                         protocol.ID
 	kTable                         ktable.Table
 	tokenSecret                    []byte
 	sampleInfoHashesInterval       int64
 	peerTraceInfoHashWithPeersChan concurrency.BatchingChannel[peertrace.PeerTraceInfoHashWithPeers]
+	infoHashTriagePassive          concurrency.BatchingChannel[NodeHasPeersForHashResponder]
 }
 
 var ErrMissingArguments = dht.Error{
@@ -81,7 +90,14 @@ func (r responder) Respond(_ context.Context, msg dht.RecvMsg) (ret dht.Return, 
 		ret.Token = &token
 		peers := make([]netip.AddrPort, 0, 1)
 		peers = append(peers, netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()))
-
+		//r.infoHashTriagePassive.In() <- NodeHasPeersForHashResponder{
+		//	InfoHash:          args.InfoHash,
+		//	Node:              netip.AddrPortFrom(msg.From.Addr(), msg.From.Port()),
+		//	SourceRequestType: "Get-Peers",
+		//}
+		if bytes.Equal(args.ID.Bytes()[:4], args.InfoHash.Bytes()[:4]) {
+			return
+		}
 		r.peerTraceInfoHashWithPeersChan.In() <- peertrace.PeerTraceInfoHashWithPeers{
 			Source:   "get_peers",
 			InfoHash: args.InfoHash,
@@ -101,7 +117,11 @@ func (r responder) Respond(_ context.Context, msg dht.RecvMsg) (ret dht.Return, 
 		}}})
 		peers := make([]netip.AddrPort, 0, 1)
 		peers = append(peers, netip.AddrPortFrom(msg.From.Addr(), msg.AnnouncePort()))
-
+		//r.infoHashTriagePassive.In() <- NodeHasPeersForHashResponder{
+		//	InfoHash:          args.InfoHash,
+		//	Node:              netip.AddrPortFrom(msg.From.Addr(), msg.From.Port()),
+		//	SourceRequestType: "Announce",
+		//}
 		r.peerTraceInfoHashWithPeersChan.In() <- peertrace.PeerTraceInfoHashWithPeers{
 			Source:   "Announcement",
 			InfoHash: args.InfoHash,

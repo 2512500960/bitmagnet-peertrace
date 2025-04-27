@@ -39,6 +39,7 @@ func (c *crawler) runSampleInfoHashes(ctx context.Context) {
 				discoveredHashes = append(discoveredHashes, nodeHasPeersForHash{
 					infoHash: s,
 					node:     n.Addr(),
+					source:   "sample_infohash",
 				})
 			}
 		}

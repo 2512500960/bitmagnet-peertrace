@@ -34,6 +34,7 @@ func New() fx.Option {
 			dhtcrawler.NewDiscoveredNodes,
 			dhtcrawler.NewPeerTrace,
 			dhtcrawler_health_check.New,
+			dhtcrawler.NewDownloader,
 		),
 	)
 }

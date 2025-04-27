@@ -2,6 +2,7 @@ package dhtcrawler
 
 import (
 	"context"
+	"net"
 	"net/netip"
 	"time"
 
@@ -40,6 +41,11 @@ func (c *crawler) runDiscoveredNodes(ctx context.Context) {
 			for _, p := range ps {
 				if _, ok := m[p.Addr().Addr().String()]; !ok {
 					m[p.Addr().Addr().String()] = p
+					ip_city, err := c.SearchGeoIPReaderCity.City(net.ParseIP(p.Addr().String()))
+					if err == nil && ip_city.Country.IsoCode != "CN" {
+						c.logger.Debugf("%s is not in CN, will not add it to table", p.Addr().String())
+						continue
+					}
 					addrs = append(addrs, p.Addr().Addr())
 				}
 			}
