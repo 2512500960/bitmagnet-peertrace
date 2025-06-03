@@ -10,6 +10,11 @@ traces of IPs from other Country/Region would not be recorded.
 To compile : `go build -ldflags "-X github.com/bitmagnet-io/bitmagnet/internal/version.GitTag=$(git describe --tags --always --dirty)"`
 Geodb file download: https://github.com/P3TERX/GeoLite.mmdb, put it in internal/geodb/
 
+server query will not be available anymore, upload history experimental data
+![image](https://github.com/user-attachments/assets/d668744e-5518-434d-a098-a7710755c65d)
+
+
+
 For some reason, there will be quite a lot unrelated peertrace/torrent records in database after some run, to prune the db:
 
 ```
@@ -54,4 +59,5 @@ access index.py with no parameters will show records with the web client's ip ad
 https://80686.online/ is for ipv4 and ipv6 access, will show ipv6 address prioritarily
 
 https://80386.online/ is for ipv4 access, will show ipv4 address only
+![image](https://github.com/user-attachments/assets/1cb80e80-2989-4754-8a8c-ae3ea18ceccb)
 
